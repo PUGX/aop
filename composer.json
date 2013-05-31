@@ -1,5 +1,5 @@
 {
-    "name": "pugx/AOP",
+    "name": "pugx/aop",
     "description": "Aspect-oriented logging for PHP.",
     "require": {
         "symfony/class-loader": "2.2.*",
