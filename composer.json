@@ -1,13 +1,26 @@
 {
-    "name": "pugx/aol",
+    "name": "pugx/AOP",
     "description": "Aspect-oriented logging for PHP.",
     "require": {
         "symfony/class-loader": "2.2.*",
-        "psr/log": "1.0.0"
+        "psr/log": "1.0.0",
+        "doctrine/common": "2.3.*"
     },
     "require-dev": {
         "phpunit/phpunit": "3.7.*",
-        "monolog/monolog": "1.5.0"
+        "monolog/monolog": "1.5.0",
+        "pimple/pimple": "1.0.2",
+        "symfony/dependency-injection": "2.2.*",
+        "symfony/config": "2.2.*",
+        "symfony/yaml": "2.2.*"
+    },
+    "autoload": {
+        "psr-0": {
+            "PUGX\\AOP\\Test":  "test/",
+            "PUGX\\AOP\\Stub":  "test/",
+            "PUGX\\AOP\\Proxy": "test/proxy/",
+            "PUGX\\AOP\\": "src/"
+        }
     },
     "license": "MIT",
     "authors": [

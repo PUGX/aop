@@ -1,0 +1,10 @@
+services:
+  monolog.logger_standard:
+    class: "Monolog\\Logger"
+    arguments:
+      name: logger
+  my_example_service:
+    class: "Example\\MyExampleClass"
+    arguments:
+      a: 1
+      b: 2

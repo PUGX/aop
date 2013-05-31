@@ -1,2 +1,4 @@
 /nbproject/
 /vendor/
+!/test/proxy/.gitkeep
+/test/proxy
