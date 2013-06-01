@@ -43,7 +43,7 @@ Here is a list of available aspects:
 
 Installation should be done via composer.
 
-Here's the link of the [package on Packagist]().
+Here's the link of the [package on Packagist](https://packagist.org/packages/pugx/aop).
 
 ## Examples
 
