@@ -70,7 +70,7 @@ your DIC with AOP.
 
 As you probably noticed, we passed an empty array
 representing the list of aspects. Read on to understand
-how to actually inject aspects in the container's services?
+how to actually inject aspects in the container's services.
 
 ### Loggable
 
@@ -89,7 +89,7 @@ $manager = new Manager(array(
 ), $proxyDir);
 ```
 
-Now, let's see how our DIC is configured:
+Now, let's see how the DIC is configured:
 
 ``` yaml
 services:
@@ -104,7 +104,7 @@ services:
       b: 2
 ```
 
-At this point I just need to add the annotations
+At this point you just need to add the annotations
 to enable Loggable in the service `my_example_service`:
 
 ``` php
@@ -135,7 +135,7 @@ class MyExampleClass
 }
 ```
 
-At the end, we just need to run the code
+At the end, you just need to run the code
 to see that `Monolog` is actually logging
 thanks to the Loggable aspect:
 
