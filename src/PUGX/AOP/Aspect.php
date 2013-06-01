@@ -181,8 +181,8 @@ EOT;
             $servicesToSetInTheBody         = array();
             
             foreach ($this->getDependencies() as $dependency) {
-                $servicesToAddInTheSignature[]  = "\$" . $dependency . " = null";
-                $servicesToSetInTheBody[]       = "\$this->{$dependency} = \${$dependency};";
+                $servicesToAddInTheSignature[]  = "{$dependency->getType()} \${$dependency->getName()} = null";
+                $servicesToSetInTheBody[]       = "\$this->{$dependency->getName()} = \${$dependency->getName()};";
             }
             
             $servicesToAddInTheSignature    = implode(',', $servicesToAddInTheSignature);

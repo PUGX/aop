@@ -5,6 +5,7 @@ namespace PUGX\AOP\Aspect;
 use PUGX\AOP\Aspect;
 use ReflectionMethod;
 use PUGX\AOP\Aspect\Loggable\Annotation;
+use PUGX\AOP\Aspect\Dependency;
 
 /**
  * Loggable aspect: this aspect is capable of injecting a logger into a class
@@ -26,7 +27,7 @@ class Loggable extends Aspect implements AspectInterface
     public function getDependencies()
     {
         return array(
-            'logger' => 'logger_pugx_aop',
+            'logger' => new Dependency('logger_pugx_aop', "\Psr\Log\LoggerInterface"),
         );
     }
     
@@ -35,17 +36,17 @@ class Loggable extends Aspect implements AspectInterface
      * method ($refMethod), using the $loggerName to log.
      * 
      * @param string $stage
-     * @param \PUGX\AOP\Aspect\Reflectionmethod $refMethod
-     * @param string $loggerName
+     * @param PUGX\AOP\Aspect\Reflectionmethod $refMethod
+     * @param PUGX\AOP\Aspect\Dependency $logger
      * @return string
      */
-    protected function getLogs($stage, Reflectionmethod $refMethod, $loggerName)
+    protected function getLogs($stage, Reflectionmethod $refMethod, Dependency $logger)
     {
         $logs = "";
 
         foreach ($this->getAspectAnnotations($refMethod) as $annotation) {
             if ($annotation->shouldLogAt($stage)) {
-                $logs .= $this->generateLog($annotation, $loggerName);
+                $logs .= $this->generateLog($annotation, $logger);
             }
         }
         
@@ -56,14 +57,14 @@ class Loggable extends Aspect implements AspectInterface
      * Generates the logging and updated the service, requiring an additional
      * argument (the logger used by the aspect).
      * 
-     * @param \PUGX\AOP\Aspect\Loggable\Annotation $annotation
-     * @param type $loggerName
+     * @param PUGX\AOP\Aspect\Loggable\Annotation $annotation
+     * @param PUGX\AOP\Aspect\Dependency $logger
      * @return string
      */
-    protected function generateLog(Annotation $annotation, $loggerName)
+    protected function generateLog(Annotation $annotation, Dependency $logger)
     {
         $this->getService()->addArgument($annotation->with);
 
-        return "\$this->{$loggerName}->{$annotation->level}(sprintf('$annotation->as', $annotation->what));";
+        return "\$this->{$logger->getName()}->{$annotation->level}(sprintf('$annotation->as', $annotation->what));";
     }
 }
