@@ -2,7 +2,7 @@
 
 namespace PUGX\AOP\Aspect\Loggable;
 
-use Doctrine\Common\Annotations\Annotation as BaseAnnotation;
+use PUGX\AOP\Aspect\Annotation as BaseAnnotation;
 use Psr\Log\LogLevel;
 
 /**
@@ -13,9 +13,10 @@ use Psr\Log\LogLevel;
 class Annotation extends BaseAnnotation
 {
     public $what;
-    public $when;
+    public $when = BaseAnnotation::START;
     public $with;
     public $as;
+    public $context;
     public $level = LogLevel::INFO;
     
     /**
@@ -28,5 +29,20 @@ class Annotation extends BaseAnnotation
     public function shouldLogAt($stage)
     {
         return $this->when === $stage;
+    }
+    
+    /**
+     * Returns all the variables that should be logged as context in the scope
+     * of this Loggable annotation.
+     * 
+     * @return array
+     */
+    public function getContextParameters()
+    {        
+        if ($this->context) {
+            return explode(',', $this->context);
+        }
+        
+        return array();
     }
 }

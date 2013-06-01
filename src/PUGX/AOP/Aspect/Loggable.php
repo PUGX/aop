@@ -15,6 +15,15 @@ use PUGX\AOP\Aspect\Dependency;
 class Loggable extends Aspect implements AspectInterface
 {   
     /**
+     * The format used to log.
+     * This format allows you to modify (from the annotations):
+     * - level
+     * - log message
+     * - context
+     */
+    const LOG_FORMAT = "\$this->%s->%s(sprintf('%s', %s), %s);";
+    
+    /**
      * @inheritdoc
      */
     protected function generateAspectCodeAtMethodStage($stage, ReflectionMethod $refMethod)
@@ -24,6 +33,11 @@ class Loggable extends Aspect implements AspectInterface
         return $this->getLogs($stage, $refMethod, $dependencies['logger']);
     }
     
+    /**
+     * Returns the dependencies that this aspect needs to be able to run.
+     * 
+     * @return array
+     */
     public function getDependencies()
     {
         return array(
@@ -65,6 +79,32 @@ class Loggable extends Aspect implements AspectInterface
     {
         $this->getService()->addArgument($annotation->with);
 
-        return "\$this->{$logger->getName()}->{$annotation->level}(sprintf('$annotation->as', $annotation->what));";
+        return sprintf(
+            self::LOG_FORMAT,
+            $logger->getName(),
+            $annotation->level,
+            $annotation->as,
+            $annotation->what,
+            $this->getContext($annotation->getContextParameters())
+        );
+    }
+    
+    /**
+     * Returns the context that will be logged.
+     * 
+     * @param array $contextParameters
+     * @return string
+     */
+    protected function getContext(array $contextParameters)
+    {
+        $replaces = array(
+            '$this->',
+        );
+        array_walk($contextParameters, function(&$contextParameter, $key) use ($replaces){
+            $contextParameter = sprintf("'%s' => %s", str_replace($replaces, array(), substr($contextParameter, 1)), $contextParameter);
+        });
+        $contextParameters  = implode(',', $contextParameters);
+        
+        return "array($contextParameters)";
     }
 }

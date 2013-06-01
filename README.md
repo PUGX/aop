@@ -145,6 +145,7 @@ class MyExampleClass
     
     /**
      * @Log(what="$this->b", when="start", with="monolog.logger_standard", as="Hey, value of MyExampleClass::b is %s")
+     * @Log(what="$this->b", with="monolog.logger_standard", as="Log with context!", context="$this->b")
      * @Log(what="$this->b", when="end", with="monolog.logger_standard", as="HOLY COW! Now MyExampleClass::b is %s")
      */
     public function doSomething()
