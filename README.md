@@ -1,5 +1,7 @@
 # PUGX/AOP
 
+[![Build Status](https://travis-ci.org/PUGX/aop.png?branch=master)](https://travis-ci.org/PUGX/aop)
+
 This library aims to provide a very simple
 and lightweight support for Aspect-Oriented
 Programming in PHP frameworks and libraries.
