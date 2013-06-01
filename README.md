@@ -8,6 +8,23 @@ It basically provides a layer to compile
 aspects in classes exposed as services in a
 dependency injection container.
 
+## Development
+
+AOP is currently under development, so it
+is not recommended for production environments.
+
+In the pipeline, we have the following ideas:
+
+* support dynamic aspects (**not** with code-generation)
+* support static compilation of the container (for example, before deployments)
+* caching
+* covering the library with more and more unit tests
+* writing compilers for more DICs
+
+This library is **experimental**: we need to get our heads around the
+idea of AOP implemented in this way before going further with it.
+Development, in any case, is active.
+
 ## Supported containers
 
 Here is a list of the supported DICs:
@@ -145,16 +162,4 @@ thanks to the Loggable aspect:
 $myExampleService = $container->get('my_example_service');
 $myExampleService->doSomething();
 ```
-
-## Development
-
-AOP is currently under development, so it
-is not recommended for production environments.
-
-In the pipeline, we have the following ideas:
-
-* support static compilation of the container (for example, before deployments)
-* caching
-* covering the library with more and more unit tests
-* writing compilers for more DICs
 
