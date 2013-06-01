@@ -64,6 +64,6 @@ class Loggable extends Aspect implements AspectInterface
     {
         $this->getService()->addArgument($annotation->with);
 
-        return "\$this->{$loggerName}->info(sprintf('$annotation->as', $annotation->what));";
+        return "\$this->{$loggerName}->{$annotation->level}(sprintf('$annotation->as', $annotation->what));";
     }
 }
