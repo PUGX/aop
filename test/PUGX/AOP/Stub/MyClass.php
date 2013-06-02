@@ -14,6 +14,7 @@ class MyClass
      * @Log(what="$b", when="end", with="monolog.logger_standard", as="$b is %s", level="error")
      * @Log(what="$this->a", when="end", with="monolog.logger_standard", as="MyClass::a, which is the sum of a and b, is %s")
      * @Log(what="$a", with="monolog.logger_standard", as="Logging some context", context="$b, $a, $this->a")
+     * @Log(what="$a", when="end", with="monolog.logger_standard", as="Logging some context at the end!", context="$this->a")
      * @PUGX\AOP\Stub\Annotation\Test
      * @param int $a
      * @param int $b

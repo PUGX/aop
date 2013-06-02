@@ -4,8 +4,8 @@ namespace PUGX\AOP\Aspect;
 
 use PUGX\AOP\Aspect;
 use ReflectionMethod;
-use PUGX\AOP\Aspect\Loggable\Annotation;
-use PUGX\AOP\Aspect\Dependency;
+use PUGX\AOP\Aspect\Annotation;
+use ReflectionObject;
 
 /**
  * Loggable aspect: this aspect is capable of injecting a logger into a class
@@ -13,98 +13,113 @@ use PUGX\AOP\Aspect\Dependency;
  * logger instance everywhere.
  */
 class Loggable extends Aspect implements AspectInterface
-{   
+{    
     /**
-     * The format used to log.
-     * This format allows you to modify (from the annotations):
-     * - level
-     * - log message
-     * - context
+     * @inheritdoc
      */
-    const LOG_FORMAT = "\$this->%s->%s(sprintf('%s', %s), %s);";
+    public function getAspectId()
+    {
+        return "pugx_aop_loggable";
+    }
     
     /**
      * @inheritdoc
      */
-    protected function generateAspectCodeAtMethodStage($stage, ReflectionMethod $refMethod)
-    {
-        $dependencies = $this->getDependencies();
+    protected function injectAspectDependencies(ReflectionMethod $refMethod)
+    {    
+        parent::injectAspectDependencies($refMethod);
         
-        return $this->getLogs($stage, $refMethod, $dependencies['logger']);
-    }
-    
-    /**
-     * Returns the dependencies that this aspect needs to be able to run.
-     * 
-     * @return array
-     */
-    public function getDependencies()
-    {
-        return array(
-            'logger' => new Dependency('logger_pugx_aop', "\Psr\Log\LoggerInterface"),
-        );
-    }
-    
-    /**
-     * Get the logs that should be added at the $stage of the
-     * method ($refMethod), using the $loggerName to log.
-     * 
-     * @param string $stage
-     * @param PUGX\AOP\Aspect\Reflectionmethod $refMethod
-     * @param PUGX\AOP\Aspect\Dependency $logger
-     * @return string
-     */
-    protected function getLogs($stage, Reflectionmethod $refMethod, Dependency $logger)
-    {
-        $logs = "";
-
         foreach ($this->getAspectAnnotations($refMethod) as $annotation) {
+            $this->setDependency($annotation->with);
+        }
+    }
+    
+    /**
+     * @inheritdoc
+     */
+    public function trigger($stage, $service, ReflectionObject $refService, ReflectionMethod $refMethod, array $refParameters, array $arguments)
+    {
+        foreach ($this->getAspectAnnotations($refMethod) as $annotation) {
+            $logger     = $this->getDependency($annotation->with);
+            $context    = $this->getContext($annotation->getContextParameters(), $refService, $refParameters, $arguments, $service);
+            $what       = $this->resolveParameter($annotation->what, $refService, $refParameters, $arguments, $service);
+            
             if ($annotation->shouldLogAt($stage)) {
-                $logs .= $this->generateLog($annotation, $logger);
+                $logger->{$annotation->level}(sprintf($annotation->as, $what), $context);
             }
         }
-        
-        return $logs;
     }
     
     /**
-     * Generates the logging and updated the service, requiring an additional
-     * argument (the logger used by the aspect).
+     * Resolves what parameter should be logged as defined from the annotation.
+     * If the parameter is a simple variable (ie $a), it looks for the arguments
+     * that were passed to the "Loggabled" method, if it looks like a class
+     * member ($this->a) it uses reflection to access it.
      * 
-     * @param PUGX\AOP\Aspect\Loggable\Annotation $annotation
-     * @param PUGX\AOP\Aspect\Dependency $logger
-     * @return string
+     * @param string $parameter
+     * @param object $refService
+     * @param array $parameters
+     * @param array $arguments
+     * @param object $service
+     * @return type
      */
-    protected function generateLog(Annotation $annotation, Dependency $logger)
+    protected function resolveParameter($parameter, $refService, $parameters, $arguments, $service)
     {
-        $this->getService()->addArgument($annotation->with);
-
-        return sprintf(
-            self::LOG_FORMAT,
-            $logger->getName(),
-            $annotation->level,
-            $annotation->as,
-            $annotation->what,
-            $this->getContext($annotation->getContextParameters())
-        );
+        if (strpos($parameter, 'this->')) {
+            return $this->getMember(substr($parameter, 7), $refService, $service);
+        }
+        
+        return $this->getArgument(substr($parameter, 1), $parameters, $arguments);
     }
     
     /**
-     * Returns the context that will be logged.
+     * Retrieves the $member from the $service instance through its $refObject.
      * 
-     * @param array $contextParameters
-     * @return string
+     * @param string $member
+     * @param ReflectionObject $refService
+     * @param object $service
+     * @return mixed
      */
-    protected function getContext(array $contextParameters)
+    protected function getMember($member, ReflectionObject $refService, $service)
     {
-        $replaces = array(
-            '$this->',
-        );
-        array_walk($contextParameters, function(&$contextParameter, $key) use ($replaces){
-            $contextParameter = sprintf("'%s' => %s", str_replace($replaces, array(), substr($contextParameter, 1)), $contextParameter);
-        });
-        $contextParameters  = implode(',', $contextParameters);
+        $property = $refService->getProperty($member);
+        $property->setAccessible(true);
         
-        return "array($contextParameters)";
+        return $property->getValue($service); 
+    }
+    
+    /**
+     * Given a list of $arguments' values and their reflection representation
+     * ($parameters), returns the value of the $parameter.
+     * 
+     * @param type $parameter
+     * @param array $refParameters
+     * @param array $arguments
+     * @return array|null
+     */
+    protected function getArgument($parameter, array $refParameters, array $arguments)
+    {
+        $i = 0;
+        
+        foreach ($refParameters as $refParameter) {
+            if ($refParameter->getName() === $parameter) {
+                return $arguments[$i];
+            }
+            
+            $i++;
+        }
+        
+        return null;
+    }
+    
+    protected function getContext(array $contextParameters, $refService, $refParameters, $arguments, $service)
+    {
+        $parameters = array();
+        
+        foreach ($contextParameters as $key => $parameter) {
+            $parameters[$parameter] = $this->resolveParameter(trim($parameter), $refService, $refParameters, $arguments, $service);
+        }
+        
+        return $parameters;
     }
 }

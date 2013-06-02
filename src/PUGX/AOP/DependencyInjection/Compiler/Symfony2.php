@@ -41,16 +41,27 @@ class Symfony2 extends BaseCompiler implements CompilerInterface
     
     /**
      * Adds the service $name to the service $serviceId as an argument.
+     * If the service is an object, it gets automatically added to the
+     * definition, if it is a string, it means that it is a reference to another
+     * service in the container itself, so it's retrieved from the container.
      * 
      * @param string $serviceId
-     * @param string $name
+     * @param string $service
      */
-    public function addArgument($serviceId, $name)
+    public function addArgument($serviceId, $service)
     {
         $definition = $this->getContainer()->getDefinition($serviceId);
         $arguments  = $definition->getArguments();
+        
+        if (is_object($service)) {
+            $serviceName    = $service->getAspectId();
+        } else {
+            $serviceName    = $service;
+            $service        = $this->getContainer()->get($service);
+        }
+        
         $definition->setArguments(array_merge($arguments, array(
-            $name => $this->getContainer()->get($name)
+            $serviceName => $service
         )));
     }
 }

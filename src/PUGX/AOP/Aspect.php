@@ -12,6 +12,8 @@ use ReflectionMethod;
 use PUGX\AOP\DependencyInjection\Compiler;
 use PUGX\AOP\DependencyInjection\Service;
 use PUGX\AOP\Aspect\Annotation;
+use PUGX\AOP\Aspect\Dependency;
+use ReflectionObject;
 
 /**
  * Base class that provides a common behavior for all aspects that you want to
@@ -23,6 +25,7 @@ abstract class Aspect implements AspectInterface
     protected $annotationsReader;
     protected $proxyDirectory;
     protected $service;
+    protected $dependencies = array();
     
     /**
      * Constructor
@@ -88,6 +91,16 @@ EOT;
     }
     
     /**
+     * Returns the DIC instance.
+     * 
+     * @return object
+     */
+    protected function getContainer()
+    {
+        return $this->getService()->getContainer();
+    }
+    
+    /**
      * Returns the directory where proxy classes will be stored.
      * 
      * @return string
@@ -110,36 +123,38 @@ EOT;
         $methods = "";
 
         foreach ($refClass->getMethods() as $refMethod) {
-                $parameters         = array();
-                $parentParameters   = array();
+                if (count($this->getAspectAnnotations($refMethod))) {
+                    $parameters         = array();
+                    $parentParameters   = array();
 
-                foreach ($refMethod->getParameters() as $refParameter) {
-                    if ($refParameter->getClass()) {
+                    foreach ($refMethod->getParameters() as $refParameter) {
+                        if ($refParameter->getClass()) {
                         $this->namespacesToImport .= <<<EOT
 use {$refParameter->getClass()->getName()};
 EOT;
 
-                        $type = $refParameter->getClass()->getShortName();
-                    } elseif ($refParameter->isArray()) {
-                        $type = 'array';
-                    } else {
-                        $type = null;
+                            $type = $refParameter->getClass()->getShortName();
+                        } elseif ($refParameter->isArray()) {
+                            $type = 'array';
+                        } else {
+                            $type = null;
+                        }
+
+                        $parameter              = $type . " $" . $refParameter->getName();
+
+                        if ($refParameter->isOptional()) {
+                            $parameter .= ' = array()';
+                        }
+
+                        $parameters[]           = $parameter;
+                        $parentParameters[]     = "$" . $refParameter->getName();
                     }
-                    
-                    $parameter              = $type . " $" . $refParameter->getName();
-                    
-                    if ($refParameter->isOptional()) {
-                        $parameter .= ' = array()';
-                    }
-                    
-                    $parameters[]           = $parameter;
-                    $parentParameters[]     = "$" . $refParameter->getName();
+
+                    $parametersAsString         = implode(', ', $parameters);
+                    $parentParametersAsString   = implode(', ', $parentParameters);
+
+                    $methods .= $this->generateMethod($refMethod, $parametersAsString, $parentParametersAsString);
                 }
-
-                $parametersAsString         = implode(', ', $parameters);
-                $parentParametersAsString   = implode(', ', $parentParameters);
-
-                $methods .= $this->generateMethod($refMethod, $parametersAsString, $parentParametersAsString);
             }
 
         return $methods;
@@ -151,15 +166,79 @@ EOT;
      * @param string $stage
      * @param ReflectionMethod $refMethod
      */
-    abstract protected function generateAspectCodeAtMethodStage($stage, ReflectionMethod $refMethod);
+    protected function generateAspectCodeAtMethodStage($stage, ReflectionMethod $refMethod)
+    {        
+       return <<<EOT
+           \$refClass               = new \ReflectionClass(\$this);
+           \$refParent              = \$refClass->getParentClass();
+           \$reflectionMethod       = new \ReflectionMethod(\$refParent->getName(), '{$refMethod->getName()}');
+           \$reflectionParameters   = \$reflectionMethod->getParameters();
+           \$this->{$this->getAspectId()}->trigger('$stage', \$this, new \ReflectionObject(\$this), \$reflectionMethod, \$reflectionParameters, func_get_args());
+EOT;
+    }
     
     /**
-     * Gets the dependencies that need to be injected in the new service's
-     * constructor.
+     * @inheritdoc
+     */
+    abstract public function trigger($stage, $service, ReflectionObject $refService, ReflectionMethod $refMethod, array $refParameters, array $arguments);
+    
+    /**
+     * This method is used by concrete aspects to inject into the service they
+     * are attached to the required dependencies (at first, the aspect itself).
+     * 
+     * @param ReflectionMethod $refMethod
+     */
+    protected function injectAspectDependencies(ReflectionMethod $refMethod)
+    {    
+        $class = get_called_class();
+        $this->getService()->addArgument($this);
+    }
+    
+
+    /**
+     * Returns all the dependencies of the aspect.
+     * Aspects' dependencies are retrieved from the DIC.
      * 
      * @return array
      */
-    abstract protected function getDependencies();
+    protected function getDependencies()
+    {
+        return $this->dependencies;
+    }
+    
+    /**
+     * Retrieves a dependency.
+     * 
+     * @param string $name
+     * @return object
+     */
+    protected function getDependency($name)
+    {
+        return $this->dependencies[$name];
+    }
+    
+    /**
+     * Defines a dependency for this aspect.
+     * The dependency name must be the same name used to define the service in
+     * the DIC.
+     * If, for example, you want to use the service 'monolog.logger_firephp' in
+     * an aspect, you would just need to call:
+     * 
+     *   $aspect->setDependency('monolog.logger_firephp');
+     * 
+     * @param string $name
+     */
+    protected function setDependency($name)
+    {
+        $this->dependencies[$name] = $this->getContainer()->get($name);
+    }
+    
+    /**
+     * Returns the identifier for the current aspect.
+     * 
+     * @return array
+     */
+    abstract public function getAspectId();
     
     /**
      * Generates the content of the method in the proxy class.
@@ -180,10 +259,8 @@ EOT;
             $servicesToAddInTheSignature    = array();
             $servicesToSetInTheBody         = array();
             
-            foreach ($this->getDependencies() as $dependency) {
-                $servicesToAddInTheSignature[]  = "{$dependency->getType()} \${$dependency->getName()} = null";
-                $servicesToSetInTheBody[]       = "\$this->{$dependency->getName()} = \${$dependency->getName()};";
-            }
+            $servicesToAddInTheSignature[]  = "\${$this->getAspectId()} = null";
+            $servicesToSetInTheBody[]       = "\$this->{$this->getAspectId()} = \${$this->getAspectId()};";
             
             $servicesToAddInTheSignature    = implode(',', $servicesToAddInTheSignature);
             $servicesToSetInTheBody         = implode(';', $servicesToSetInTheBody);
@@ -192,6 +269,8 @@ EOT;
                 $servicesToAddInTheSignature = ", " . $servicesToAddInTheSignature;
             }
         }
+        
+        $this->injectAspectDependencies($refMethod);
         
         return <<<EOT
     $visibility $scope function {$refMethod->getName()}($parameters $servicesToAddInTheSignature)
@@ -220,13 +299,13 @@ EOT;
     {
         $annotations        = $this->getAnnotationsReader()->getMethodAnnotations($refMethod);
         $annotationsClass   = $this->getAnnotationsClass();
-        
+
         foreach ($annotations as $key => $annotation) {
             if (!$annotation instanceOf $annotationsClass) {
                 unset($annotations[$key]);
             }
         }
-        
+
         return $annotations;
     }
     

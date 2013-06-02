@@ -27,11 +27,21 @@ class Service
     /**
      * Adds an argument to the service represented by this object.
      * 
-     * @param string $serviceId
+     * @param string $service
      */
-    public function addArgument($serviceId)
+    public function addArgument($service)
     {
-        $this->getCompiler()->addArgument($this->getId(), $serviceId);
+        $this->getCompiler()->addArgument($this->getId(), $service);
+    }
+    
+    /**
+     * Returna the container to which this service belongs to.
+     * 
+     * @return object
+     */
+    public function getContainer()
+    {
+        return $this->getCompiler()->getContainer();
     }
     
     /**

@@ -58,5 +58,5 @@ abstract class Compiler implements CompilerInterface
     /**
      * @inheritdoc
      */
-    abstract public function addArgument($serviceId, $name);
+    abstract public function addArgument($serviceId, $service);
 }

@@ -30,7 +30,7 @@ interface CompilerInterface
      * the service 'logger' in the container.
      * 
      * @param string $serviceId
-     * @param string $name
+     * @param string $service
      */
-    public function addArgument($serviceId, $name);
+    public function addArgument($serviceId, $service);
 }
