@@ -17,7 +17,7 @@ is not recommended for production environments.
 
 In the pipeline, we have the following ideas:
 
-* support dynamic aspects (**not** with code-generation)
+* evaluate how to integrate with the code/concepts provided in [JMSAopBundle](https://github.com/schmittjoh/JMSAopBundle)
 * support static compilation of the container (for example, before deployments)
 * caching
 * covering the library with more and more unit tests
