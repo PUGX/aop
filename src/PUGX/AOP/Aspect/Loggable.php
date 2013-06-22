@@ -6,104 +6,92 @@ use PUGX\AOP\Aspect;
 use ReflectionMethod;
 use PUGX\AOP\Aspect\Annotation;
 use ReflectionObject;
+use Symfony\Component\DependencyInjection\Definition;
 
 /**
  * Loggable aspect: this aspect is capable of injecting a logger into a class
- * and logging without the need to explicitely modify your code and pass the
+ * and logging without the need to explicitly modify your code and pass the
  * logger instance everywhere.
  */
-class Loggable extends Aspect implements AspectInterface
+class Loggable implements AspectInterface
 {    
-    /**
-     * @inheritdoc
-     */
-    public function getAspectId()
+
+    private $container;
+
+    function __construct($container)
     {
-        return "pugx_aop_loggable";
+        $this->container = $container;
     }
-    
+
     /**
      * @inheritdoc
      */
-    protected function injectAspectDependencies(ReflectionMethod $refMethod)
-    {    
-        parent::injectAspectDependencies($refMethod);
-        
-        foreach ($this->getAspectAnnotations($refMethod) as $annotation) {
-            $this->setDependency($annotation->with);
-        }
-    }
-    
-    /**
-     * @inheritdoc
-     */
-    public function trigger($stage, $service, ReflectionObject $refService, ReflectionMethod $refMethod, array $refParameters, array $arguments)
+    public function trigger(Aspect\Loggable\Annotation $annotation, $instance, $methodName, array $arguments)
     {
-        foreach ($this->getAspectAnnotations($refMethod) as $annotation) {
-            $logger     = $this->getDependency($annotation->with);
-            $context    = $this->getContext($annotation->getContextParameters(), $refService, $refParameters, $arguments, $service);
-            $what       = $this->resolveParameter($annotation->what, $refService, $refParameters, $arguments, $service);
-            
-            if ($annotation->shouldLogAt($stage)) {
-                $logger->{$annotation->level}(sprintf($annotation->as, $what), $context);
-            }
-        }
+        $refProxyClass = new ReflectionObject($instance);
+        $refMethod     = new ReflectionMethod($refProxyClass->name, $methodName);
+        $context       = $this->getContext($annotation->context, $refProxyClass, $arguments, $refMethod, $instance);
+        $what          = $this->resolveParameter($annotation->what, $refProxyClass, $arguments, $refMethod,
+                                                 $instance);
+
+        $service = $this->container->get($annotation->with);
+        $service->{$annotation->level}(sprintf($annotation->as, $what), $context);
     }
-    
+
     /**
      * Resolves what parameter should be logged as defined from the annotation.
      * If the parameter is a simple variable (ie $a), it looks for the arguments
      * that were passed to the "Loggabled" method, if it looks like a class
      * member ($this->a) it uses reflection to access it.
-     * 
+     *
      * @param string $parameter
-     * @param object $refService
+     * @param \ReflectionObject $refProxyClass
      * @param array $parameters
-     * @param array $arguments
-     * @param object $service
+     * @param $refMethod
+     * @param object $instance
      * @return type
      */
-    protected function resolveParameter($parameter, $refService, $parameters, $arguments, $service)
+    protected function resolveParameter($parameter, ReflectionObject $refProxyClass, $parameters, $refMethod, $instance)
     {
         if (strpos($parameter, 'this->')) {
-            return $this->getMember(substr($parameter, 7), $refService, $service);
+            return $this->getMember(substr($parameter, 7), $refProxyClass, $instance);
         }
-        
-        return $this->getArgument(substr($parameter, 1), $parameters, $arguments);
+
+        return $this->getArgument(substr($parameter, 1), $parameters, $refMethod);
     }
     
     /**
      * Retrieves the $member from the $service instance through its $refObject.
      * 
      * @param string $member
-     * @param ReflectionObject $refService
-     * @param object $service
+     * @param ReflectionObject $refProxyClass
+     * @param object $instance
      * @return mixed
      */
-    protected function getMember($member, ReflectionObject $refService, $service)
+    protected function getMember($member, ReflectionObject $refProxyClass, $instance)
     {
-        $property = $refService->getProperty($member);
+        $property = $refProxyClass->getParentClass()->getProperty($member);
         $property->setAccessible(true);
         
-        return $property->getValue($service); 
+        return $property->getValue($instance);
     }
-    
+
     /**
      * Given a list of $arguments' values and their reflection representation
      * ($parameters), returns the value of the $parameter.
-     * 
+     *
      * @param type $parameter
      * @param array $refParameters
-     * @param array $arguments
+     * @param ReflectionMethod $refMethod
      * @return array|null
      */
-    protected function getArgument($parameter, array $refParameters, array $arguments)
+    protected function getArgument($parameter, array $refParameters, ReflectionMethod $refMethod)
     {
         $i = 0;
-        
-        foreach ($refParameters as $refParameter) {
+        $parameters = $refMethod->getParameters();
+        foreach ($parameters as $refParameter) {
             if ($refParameter->getName() === $parameter) {
-                return $arguments[$i];
+                return $refParameters[$i];
             }
             
             $i++;
@@ -112,12 +100,12 @@ class Loggable extends Aspect implements AspectInterface
         return null;
     }
     
-    protected function getContext(array $contextParameters, $refService, $refParameters, $arguments, $service)
+    protected function getContext(array $contextParameters, ReflectionObject $refProxyClass, $refParameters, $refMethod, $instance)
     {
         $parameters = array();
         
-        foreach ($contextParameters as $key => $parameter) {
-            $parameters[$parameter] = $this->resolveParameter(trim($parameter), $refService, $refParameters, $arguments, $service);
+        foreach ($contextParameters as $parameter) {
+            $parameters[$parameter] = $this->resolveParameter($parameter, $refProxyClass, $refParameters, $refMethod, $instance);
         }
         
         return $parameters;

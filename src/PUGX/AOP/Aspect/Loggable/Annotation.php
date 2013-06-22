@@ -13,24 +13,11 @@ use Psr\Log\LogLevel;
 class Annotation extends BaseAnnotation
 {
     public $what;
-    public $when = BaseAnnotation::START;
     public $with;
     public $as;
-    public $context;
+    public $context = array();
     public $level = LogLevel::INFO;
-    
-    /**
-     * Checks whether the annotation is meant to add logging at the given
-     * $stage.
-     * 
-     * @param string $stage
-     * @return bool
-     */
-    public function shouldLogAt($stage)
-    {
-        return $this->when === $stage;
-    }
-    
+
     /**
      * Returns all the variables that should be logged as context in the scope
      * of this Loggable annotation.
@@ -38,11 +25,11 @@ class Annotation extends BaseAnnotation
      * @return array
      */
     public function getContextParameters()
-    {        
+    {
         if ($this->context) {
             return explode(',', $this->context);
         }
         
-        return array();
+        return '';
     }
 }
