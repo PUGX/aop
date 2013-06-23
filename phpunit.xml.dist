@@ -18,4 +18,10 @@
          testSuiteLoaderClass="PHPUnit_Runner_StandardTestSuiteLoader"
          strict="false"
          verbose="false">
+    <testsuites>
+        <testsuite name="Project Test Suite">
+            <directory>test/PUGX/AOP/Test</directory>
+        </testsuite>
+    </testsuites>
+
 </phpunit>
