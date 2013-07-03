@@ -1,12 +1,9 @@
 <?php
 
-namespace PUGX\AOP\Aspect;
+namespace PUGX\AOP\Aspect\Loggable;
 
-use PUGX\AOP\Aspect;
 use ReflectionMethod;
-use PUGX\AOP\Aspect\Annotation;
 use ReflectionObject;
-use Symfony\Component\DependencyInjection\Definition;
 
 /**
  * Loggable aspect: this aspect is capable of injecting a logger into a class
@@ -26,7 +23,7 @@ class Loggable implements AspectInterface
     /**
      * @inheritdoc
      */
-    public function trigger(Aspect\Loggable\Annotation $annotation, $instance, $methodName, array $arguments)
+    public function trigger(Annotation $annotation, $instance, $methodName, array $arguments)
     {
         $refProxyClass = new ReflectionObject($instance);
         $refMethod     = new ReflectionMethod($refProxyClass->name, $methodName);
