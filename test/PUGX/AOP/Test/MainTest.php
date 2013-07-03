@@ -7,7 +7,6 @@ use \PHPUnit_Framework_TestCase as TestCase;
 use Pimple;
 use PUGX\AOP\DependencyInjection\Compiler\Symfony2;
 use PUGX\AOP\DependencyInjection\CompilerResolver;
-use PUGX\AOP\Manager;
 use Monolog\Logger;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
