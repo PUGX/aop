@@ -17,6 +17,7 @@ class Annotation extends BaseAnnotation
     public $as;
     public $context = array();
     public $level = LogLevel::INFO;
+    protected $_aspectName = 'Loggable';
 
     /**
      * Returns all the variables that should be logged as context in the scope
