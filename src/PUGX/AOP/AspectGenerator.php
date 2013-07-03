@@ -282,7 +282,7 @@ class AspectGenerator implements GeneratorInterface
             $this->markAspectAsRequired($annotation);
 
             $interceptorCode = sprintf(
-                    'if(($return = $this->%s->trigger(new \%s(array(%s)), $this, \'%s\', array(%s))) !== null) return $return;' . "\n",
+                    'if(($result = $this->%s->trigger(new \%s(array(%s)), $this, \'%s\', array(%s))) !== null) return $result;' . "\n",
                     $this->getAspectPropertyName($annotation->getAspectName()), get_class($annotation),
                     implode(', ', $this->getAnnotationParameters($annotation)), $name, $params);
         }
