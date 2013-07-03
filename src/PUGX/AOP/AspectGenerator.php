@@ -10,7 +10,7 @@ use CG\Generator\PhpProperty;
 use CG\Generator\Writer;
 use CG\Proxy\GeneratorInterface;
 use Doctrine\Common\Annotations\Reader;
-use PUGX\AOP\Aspect\Loggable\Annotation;
+use PUGX\AOP\Aspect\BaseAnnotation;
 use ReflectionClass;
 use Doctrine\Common\Annotations\AnnotationRegistry;
 use ReflectionMethod;
@@ -111,10 +111,10 @@ class AspectGenerator implements GeneratorInterface
             $before = array();
             $after  = array();
             foreach($annotations as $annotation) {
-                /** @var Annotation $annotation */
-                $before[] = $this->generateAspectCode($method->name, Annotation::START, $annotation, $params);
+                /** @var BaseAnnotation $annotation */
+                $before[] = $this->generateAspectCode($method->name, BaseAnnotation::START, $annotation, $params);
 
-                $after[] = $this->generateAspectCode($method->name, Annotation::END, $annotation, $params);
+                $after[] = $this->generateAspectCode($method->name, BaseAnnotation::END, $annotation, $params);
             }
 
             $interceptorCode = sprintf('$reflection = new \ReflectionMethod(%s, %s);'."\n",
@@ -170,11 +170,11 @@ class AspectGenerator implements GeneratorInterface
     /**
      * @param $name
      * @param $when
-     * @param \PUGX\AOP\Aspect\BaseAnnotation $annotation
+     * @param BaseAnnotation $annotation
      * @param $params
      * @return string
      */
-    protected function generateAspectCode($name, $when, \PUGX\AOP\Aspect\BaseAnnotation $annotation, $params)
+    protected function generateAspectCode($name, $when, BaseAnnotation $annotation, $params)
     {
         $interceptorCode = '';
         if ($annotation->isTriggeredAt($when)) {
