@@ -2,7 +2,7 @@
 
 namespace PUGX\AOP\Stub\Annotation;
 
-use Doctrine\Common\Annotations\Annotation as BaseAnnotation;
+use PUGX\AOP\Aspect\BaseAnnotation;
 
 /**
  * @Annotation
