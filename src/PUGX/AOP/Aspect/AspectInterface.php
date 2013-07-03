@@ -2,15 +2,12 @@
 
 namespace PUGX\AOP\Aspect;
 
-use PUGX\AOP\DependencyInjection\Service;
-use ReflectionMethod;
-use ReflectionObject;
-
 /**
  * Interface that aspects must implement.
  */
 interface AspectInterface
 {
+
     /**
      * Triggers AOP invokation.
      * Aspects use this method to do what they want taking advantage of:
