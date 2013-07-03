@@ -4,6 +4,8 @@ namespace PUGX\AOP\Aspect\Loggable;
 
 use ReflectionMethod;
 use ReflectionObject;
+use PUGX\AOP\Aspect\AspectInterface;
+use PUGX\AOP\Aspect\BaseAnnotation;
 
 /**
  * Loggable aspect: this aspect is capable of injecting a logger into a class
@@ -23,7 +25,7 @@ class Loggable implements AspectInterface
     /**
      * @inheritdoc
      */
-    public function trigger(Annotation $annotation, $instance, $methodName, array $arguments)
+    public function trigger(BaseAnnotation $annotation, $instance, $methodName, array $arguments)
     {
         $refProxyClass = new ReflectionObject($instance);
         $refMethod     = new ReflectionMethod($refProxyClass->name, $methodName);
