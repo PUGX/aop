@@ -9,10 +9,12 @@ use Doctrine\Common\Annotations\Annotation as DoctrineAnnotation;
  */
 class BaseAnnotation extends DoctrineAnnotation
 {
+
     const START = 'start';
-    const END   = 'end';
+    const END = 'end';
 
     public $when = self::START;
+    protected $_aspectName = '';
 
     /**
      * Checks whether the annotation is meant to apply the aspect at the given
@@ -25,4 +27,15 @@ class BaseAnnotation extends DoctrineAnnotation
     {
         return $this->when === $stage;
     }
+
+    /**
+     * Get the name of the related aspect
+     *
+     * @return string
+     */
+    public function getAspectName()
+    {
+        return $this->_aspectName;
+    }
+
 }
