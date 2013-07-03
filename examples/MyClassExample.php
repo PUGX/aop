@@ -4,6 +4,7 @@ namespace Example;
 
 // import the Loggable aspect as Log
 use PUGX\AOP\Aspect\Loggable\Annotation as Log;
+use PUGX\AOP\Aspect\Roulette\Annotation as Roulette;
 
 // now, lets say that I have this class, I enabled Loggable in the constructor and
 // the doSomething method
@@ -29,5 +30,13 @@ class MyExampleClass
     public function doSomething($c)
     {
         $this->b = $this->b * 10 + (int) $c;
+    }
+
+    /**
+     * @Roulette
+     */
+    public function doSomethingSometimes($c)
+    {
+        $this->a = $this->b = $c;
     }
 }

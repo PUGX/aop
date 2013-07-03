@@ -26,9 +26,10 @@ $proxyDir = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'test' 
 
 require 'MyClassExample.php';
 
-$symfony2Compiler = new Symfony2(new AnnotationReader(), $proxyDir, '\PUGX\AOP\Aspect\Loggable\Annotation', 'loggable');
+$symfony2Compiler = new Symfony2(new AnnotationReader(), $proxyDir, '\PUGX\AOP\Aspect\BaseAnnotation', array('loggable', 'roulette'));
 $container->addCompilerPass($symfony2Compiler);
 $container->compile();
 
 $myExampleService = $container->get('my_example_service');
 $myExampleService->doSomething(5);
+$myExampleService->doSomethingSometimes(1);
