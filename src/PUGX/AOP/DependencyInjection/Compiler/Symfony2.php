@@ -82,7 +82,13 @@ class Symfony2 implements CompilerPassInterface
 
             $definition->setFile($filename);
             $definition->setClass($pg->getClassName($refClass));
-            $definition->addArgument(new Reference($this->serviceName));
+            if(is_array($this->serviceName)){
+                foreach($this->serviceName as $serviceName){
+                    $definition->addArgument(new Reference($serviceName));
+                }
+            } else {
+                    $definition->addArgument(new Reference($this->serviceName));
+            }
         }
     }
 }
