@@ -7,14 +7,11 @@ use CG\Generator\PhpClass;
 use CG\Generator\PhpMethod;
 use CG\Generator\PhpParameter;
 use CG\Generator\PhpProperty;
-use CG\Generator\Writer;
 use CG\Proxy\GeneratorInterface;
 use Doctrine\Common\Annotations\Reader;
 use PUGX\AOP\Aspect\BaseAnnotation;
 use ReflectionClass;
-use Doctrine\Common\Annotations\AnnotationRegistry;
 use ReflectionMethod;
-use PUGX\AOP\DependencyInjection\Compiler;
 
 /**
  * Base class that provides a common behavior for all aspects that you want to
@@ -22,6 +19,7 @@ use PUGX\AOP\DependencyInjection\Compiler;
  */
 class AspectGenerator implements GeneratorInterface
 {
+
     /**
      * @var Reader
      */
@@ -77,76 +75,11 @@ class AspectGenerator implements GeneratorInterface
      */
     function generate(\ReflectionClass $originalClass, PhpClass $generatedClass)
     {
-        $methods = $this->getMethods($originalClass);
-
-        $interceptorLoader = new PhpProperty();
-        $interceptorLoader
-            ->setName($this->prefix.'aspect')
-            ->setVisibility(PhpProperty::VISIBILITY_PRIVATE)
-        ;
-        $generatedClass->setProperty($interceptorLoader);
-
-        $loaderSetter = new PhpMethod();
-        $loaderSetter
-            ->setName($this->prefix.'setAspect')
-            ->setVisibility(PhpMethod::VISIBILITY_PUBLIC)
-            ->setBody('$this->'.$this->prefix.'aspect = $aspect;')
-        ;
-        $generatedClass->setMethod($loaderSetter);
-
-        $loaderParam = new PhpParameter();
-        $loaderParam
-            ->setName('aspect')
-            ->setType('PUGX\AOP\Aspect\AspectInterface')
-        ;
-        $loaderSetter->addParameter($loaderParam);
-
-        /** @var ReflectionMethod $method */
-        foreach ($methods as $method) {
-            $params = array();
-            foreach ($method->getParameters() as $param) {
-                $params[] = '$'.$param->name;
-            }
-            $params = implode(', ', $params);
-            $annotations = $this->getAspectAnnotations($method);
-            $before = array();
-            $after  = array();
-            foreach($annotations as $annotation) {
-                /** @var BaseAnnotation $annotation */
-                $before[] = $this->generateAspectCode($method->name, BaseAnnotation::START, $annotation, $params);
-
-                $after[] = $this->generateAspectCode($method->name, BaseAnnotation::END, $annotation, $params);
-            }
-
-            $interceptorCode = sprintf('$reflection = new \ReflectionMethod(%s, %s);'."\n",
-                                       var_export(ClassUtils::getUserClass($method->class), true),
-                                       var_export($method->name, true)
-            );
-
-            if ($method->name === '__construct') {
-                $interceptorCode .= '$this->'.$this->prefix.'aspect = $aspect;'."\n";
-            }
-
-            foreach($before as $code) {
-                $interceptorCode .= $code;
-            }
-            $interceptorCode .= "\n";
-            $interceptorCode .= sprintf('$return = $reflection->invokeArgs($this, array(%s));'."\n\n", $params);
-            foreach($after as $code) {
-                $interceptorCode .= $code;
-            }
-            $interceptorCode .= "\n";
-            $interceptorCode .= 'return $return;';
-            $genMethod = PhpMethod::fromReflection($method)
-                ->setBody($interceptorCode)
-                ->setDocblock(null)
-            ;
-            if ($method->name === '__construct') {
-                $genMethod->addParameter($loaderParam);
-            }
-
-            $generatedClass->setMethod($genMethod);
+        foreach ($this->getMethods($originalClass) as $method) {
+            $generatedClass->setMethod($this->generateMethod($method));
         }
+
+        $generatedClass = $this->prepareAspectInjection($originalClass, $generatedClass);
     }
 
     /**
@@ -163,12 +96,179 @@ class AspectGenerator implements GeneratorInterface
         }
 
         return array_filter(
-            $class->getMethods($filter),
-            function($method) { return !$method->isFinal() && !$method->isStatic(); }
+                        $class->getMethods($filter),
+                        function($method) {
+                            return !$method->isFinal() && !$method->isStatic();
+                        }
         );
     }
 
     /**
+     * generate the method object with its body and parameters
+     *
+     * @param ReflectionMethod $method
+     * @param array|null $aspects
+     * @return PhpMethod
+     */
+    protected function generateMethod(ReflectionMethod $method, $aspects = array())
+    {
+        $genMethod = PhpMethod::fromReflection($method)
+                ->setBody($this->generateMethodCode($method))
+                ->setDocblock(null)
+        ;
+        foreach ($aspects as $aspect) {
+            $genMethod->addParameter($this->generateAspectParameter($aspect));
+        }
+
+        return $genMethod;
+    }
+
+    /**
+     * Generate the code for a given method with the required aspects triggered before or after
+     * the method execution
+     *
+     * @param ReflectionMethod $method
+     * @return string
+     */
+    protected function generateMethodCode(ReflectionMethod $method)
+    {
+        $params = implode(', ', $this->getMethodParameters($method));
+        $implementedAspects = $this->getImplementedAspects($method, $params);
+
+        $interceptorCode = sprintf(
+                '$reflection = new \ReflectionMethod(%s, %s);' . "\n",
+                var_export(ClassUtils::getUserClass($method->class), true), var_export($method->name, true)
+        );
+
+        if ($method->name === '__construct') {
+            foreach ($this->getRequiredAspects() as $aspect) {
+                $interceptorCode .= $this->getSetterCode($aspect) . "\n";
+            }
+        }
+
+        $interceptorCode .= $this->filterImplementedAspect($implementedAspects['before']);
+        $interceptorCode .= sprintf('$return = $reflection->invokeArgs($this, array(%s));' . "\n\n", $params);
+        $interceptorCode .= $this->filterImplementedAspect($implementedAspects['after']);
+        $interceptorCode .= 'return $return;';
+
+        return $interceptorCode;
+    }
+
+    /**
+     * Simple validation
+     * @param string $implementation
+     * @return string
+     */
+    protected function filterImplementedAspect($implementation)
+    {
+        return (($implementation) ? $implementation . "\n" : "");
+    }
+
+    protected function getMethodParameters(ReflectionMethod $method)
+    {
+        $params = array();
+        foreach ($method->getParameters() as $param) {
+            $params[] = '$' . $param->name;
+        }
+        return $params;
+    }
+
+    /**
+     * Add the required properties and setters for the aspects used by the generated class
+     *
+     * @param \ReflectionClass $originalClass
+     * @param \CG\Generator\PhpClass $generatedClass
+     * @return \CG\Generator\PhpClass
+     */
+    protected function prepareAspectInjection(\ReflectionClass $originalClass, PhpClass $generatedClass)
+    {
+        $aspects = $this->getRequiredAspects();
+        $generatedClass->setMethod($this->generateMethod($originalClass->getConstructor(), $aspects));
+        foreach ($aspects as $aspect) {
+            $generatedClass->setProperty($this->generateAspectProperty($aspect));
+            $generatedClass->setMethod($this->generateAspectSetter($aspect));
+        }
+        return $generatedClass;
+    }
+
+    /**
+     * Create a property for the received aspect name
+     *
+     * @param string $aspect
+     * @return \CG\Generator\PhpProperty
+     */
+    protected function generateAspectProperty($aspect)
+    {
+        $interceptorLoader = new PhpProperty();
+        $interceptorLoader
+                ->setName($this->getAspectPropertyName($aspect))
+                ->setVisibility(PhpProperty::VISIBILITY_PRIVATE)
+        ;
+        return $interceptorLoader;
+    }
+
+    /**
+     * Create a setter for the aspect property with the received aspect name
+     *
+     * @param string $aspect
+     * @return \CG\Generator\PhpMethod
+     */
+    protected function generateAspectSetter($aspect)
+    {
+        $loaderSetter = new PhpMethod();
+        $loaderSetter
+                ->setName('set' . $this->prefix . 'Aspect' . ucfirst($aspect))
+                ->setVisibility(PhpMethod::VISIBILITY_PUBLIC)
+                ->setBody($this->getSetterCode($aspect))
+        ;
+
+        $loaderSetter->addParameter($this->generateAspectParameter($aspect));
+        return $loaderSetter;
+    }
+
+    /**
+     * Generate the code for the aspect setting
+     *
+     * @param string $aspect
+     * @return string
+     */
+    protected function getSetterCode($aspect)
+    {
+        return '$this->' . $this->getAspectPropertyName($aspect) . ' = $aspect' . ucfirst($aspect) . ';';
+    }
+
+    /**
+     * Generate the name of the property containing the received aspect
+     *
+     * @param string $aspect
+     * @return string
+     */
+    protected function getAspectPropertyName($aspect)
+    {
+        return $this->prefix . 'aspect' . $aspect;
+    }
+
+    /**
+     * Generate a parameter for a method expecting an aspect
+     *
+     * @param string $aspect
+     * @return \CG\Generator\PhpParameter
+     */
+    protected function generateAspectParameter($aspect)
+    {
+        $loaderParam = new PhpParameter();
+        $loaderParam
+                ->setName('aspect' . ucfirst($aspect))
+                ->setType('PUGX\AOP\Aspect\AspectInterface')
+        ;
+        return $loaderParam;
+    }
+
+    /**
+     * Generate the trigger of an aspect with the received annotation.
+     * If the aspect execution returns a not null value, the generated method should break the
+     * aspect execution chain and return the received value
+     *
      * @param $name
      * @param $when
      * @param BaseAnnotation $annotation
@@ -181,31 +281,60 @@ class AspectGenerator implements GeneratorInterface
         if ($annotation->isTriggeredAt($when)) {
             $this->markAspectAsRequired($annotation);
 
-            $refAnnotation = new ReflectionClass($annotation);
-            $data = array();
-            foreach($refAnnotation->getProperties() as $property) {
-                $value  = $property->getValue($annotation);
-                if (is_array($value)) {
-                    $value = array_map(function($val) {
-                        return sprintf('\'%s\'', $val);
-                    }, $value);
-                    $data[] = sprintf("'%s' => array(%s)", $property->name, implode(', ', $value));
-
-                }
-                else if (null !== $value) {
-                    $data[] = sprintf("'%s' => '%s'", $property->name, $value);
-                }
-            }
-            $writer = new Writer();
-            $writer->writeln(sprintf('$'.$this->prefix.'annotation = new '.$this->getAnnotationsClass().'(array(%s));', implode(', ', $data)));
-            $interceptorCode .= $writer->getContent();
-            $interceptorCode .= sprintf('$this->%saspect->trigger($%sannotation, $this, \'%s\', array(%s));' . "\n",
-                                        $this->prefix, $this->prefix, $name, $params);
+            $interceptorCode = sprintf(
+                    'if(($return = $this->%s->trigger(new \%s(array(%s)), $this, \'%s\', array(%s))) !== null) return $return;' . "\n",
+                    $this->getAspectPropertyName($annotation->getAspectName()), get_class($annotation),
+                    implode(', ', $this->getAnnotationParameters($annotation)), $name, $params);
         }
 
         return $interceptorCode;
     }
 
+    /**
+     * Get the parameters from the annotation as an array of strings
+     *
+     * @param \PUGX\AOP\Aspect\BaseAnnotation $annotation
+     * @return array
+     */
+    protected function getAnnotationParameters(BaseAnnotation $annotation)
+    {
+        $refAnnotation = new ReflectionClass($annotation);
+        $data = array();
+        foreach ($refAnnotation->getProperties() as $property) {
+            if ($property->isPublic()) {
+                $value = $property->getValue($annotation);
+                if (is_array($value)) {
+                    $value = array_map(function($val) {
+                                return sprintf('\'%s\'', $val);
+                            }, $value);
+                    $data[] = sprintf("'%s' => array(%s)", $property->name, implode(', ', $value));
+                } else if (null !== $value) {
+                    $data[] = sprintf("'%s' => '%s'", $property->name, $value);
+                }
+            }
+        }
+        return $data;
+    }
+
+    /**
+     * Get the implementation of all the required aspects for a method
+     *
+     * @param ReflectionMethod $method
+     * @param string $params
+     * @return array
+     */
+    protected function getImplementedAspects(ReflectionMethod $method, $params)
+    {
+        $annotations = $this->getAspectAnnotations($method);
+        $before = $after = "";
+        foreach ($annotations as $annotation) {
+            /** @var BaseAnnotation $annotation */
+            $before .= $this->generateAspectCode($method->name, BaseAnnotation::START, $annotation, $params);
+
+            $after .= $this->generateAspectCode($method->name, BaseAnnotation::END, $annotation, $params);
+        }
+        return array('before' => $before, 'after' => $after);
+    }
 
     /**
      * Retrieves all the annotations for the current aspect.
@@ -218,8 +347,8 @@ class AspectGenerator implements GeneratorInterface
      */
     protected function getAspectAnnotations(ReflectionMethod $refMethod)
     {
-        $annotations        = $this->getAnnotationsReader()->getMethodAnnotations($refMethod);
-        $annotationsClass   = $this->getAnnotationsClass();
+        $annotations = $this->getAnnotationsReader()->getMethodAnnotations($refMethod);
+        $annotationsClass = $this->getAnnotationsClass();
 
         foreach ($annotations as $key => $annotation) {
             if (!$annotation instanceOf $annotationsClass) {
@@ -259,4 +388,5 @@ class AspectGenerator implements GeneratorInterface
     {
         return array_keys($this->requiredAspects);
     }
+
 }
