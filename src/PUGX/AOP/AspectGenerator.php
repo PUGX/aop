@@ -112,9 +112,9 @@ class AspectGenerator implements GeneratorInterface
             $after  = array();
             foreach($annotations as $annotation) {
                 /** @var Annotation $annotation */
-                $before[] = $this->addEndLogger($method->name, Annotation::START, $annotation, $params);
+                $before[] = $this->generateAspectCode($method->name, Annotation::START, $annotation, $params);
 
-                $after[] = $this->addEndLogger($method->name, Annotation::END, $annotation, $params);
+                $after[] = $this->generateAspectCode($method->name, Annotation::END, $annotation, $params);
             }
 
             $interceptorCode = sprintf('$reflection = new \ReflectionMethod(%s, %s);'."\n",
@@ -174,10 +174,10 @@ class AspectGenerator implements GeneratorInterface
      * @param $params
      * @return string
      */
-    protected function addEndLogger($name, $when, \PUGX\AOP\Aspect\Annotation $annotation, $params)
+    protected function generateAspectCode($name, $when, \PUGX\AOP\Aspect\Annotation $annotation, $params)
     {
         $interceptorCode = '';
-        if ($annotation->shouldLogAt($when)) {
+        if ($annotation->isTriggeredAt($when)) {
             $refAnnotation = new ReflectionClass($annotation);
             $data = array();
             foreach($refAnnotation->getProperties() as $property) {

@@ -21,7 +21,7 @@ class Annotation extends BaseAnnotation
      * @param string $stage
      * @return bool
      */
-    public function shouldLogAt($stage)
+    public function isTriggeredAt($stage)
     {
         return $this->when === $stage;
     }
