@@ -28,6 +28,7 @@ class AspectGenerator implements GeneratorInterface
     protected $annotationsReader;
     protected $prefix = '__CG_PUGX_AOP__';
     protected $annotationClassName;
+    protected $requiredAspects = array();
 
     /**
      * Constructor
@@ -178,6 +179,8 @@ class AspectGenerator implements GeneratorInterface
     {
         $interceptorCode = '';
         if ($annotation->isTriggeredAt($when)) {
+            $this->markAspectAsRequired($annotation);
+
             $refAnnotation = new ReflectionClass($annotation);
             $data = array();
             foreach($refAnnotation->getProperties() as $property) {
@@ -235,5 +238,25 @@ class AspectGenerator implements GeneratorInterface
     protected function getAnnotationsReader()
     {
         return $this->annotationsReader;
+    }
+
+    /**
+     * Adds the aspect name into the list of required aspects
+     *
+     * @param \PUGX\AOP\Aspect\BaseAnnotation $annotation
+     */
+    protected function markAspectAsRequired(BaseAnnotation $annotation)
+    {
+        $this->requiredAspects[$annotation->getAspectName()] = true;
+    }
+
+    /**
+     * get the list of the required aspects
+     *
+     * @return type
+     */
+    protected function getRequiredAspects()
+    {
+        return array_keys($this->requiredAspects);
     }
 }
