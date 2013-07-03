@@ -170,11 +170,11 @@ class AspectGenerator implements GeneratorInterface
     /**
      * @param $name
      * @param $when
-     * @param \PUGX\AOP\Aspect\Annotation $annotation
+     * @param \PUGX\AOP\Aspect\BaseAnnotation $annotation
      * @param $params
      * @return string
      */
-    protected function generateAspectCode($name, $when, \PUGX\AOP\Aspect\Annotation $annotation, $params)
+    protected function generateAspectCode($name, $when, \PUGX\AOP\Aspect\BaseAnnotation $annotation, $params)
     {
         $interceptorCode = '';
         if ($annotation->isTriggeredAt($when)) {

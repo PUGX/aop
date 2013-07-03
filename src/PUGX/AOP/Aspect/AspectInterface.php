@@ -20,11 +20,11 @@ interface AspectInterface
      * - the $refParameters passed to the method which has AOP implemented with annotations
      * - the list of $arguments' values passed to that method
      *
-     * @param Loggable\Annotation $annotation
+     * @param BaseAnnotation $annotation
      * @param $instance
      * @param $methodName
      * @param array $arguments
      * @return void
      */
-    public function trigger(Loggable\Annotation $annotation, $instance, $methodName, array $arguments);
+    public function trigger(BaseAnnotation $annotation, $instance, $methodName, array $arguments);
 }

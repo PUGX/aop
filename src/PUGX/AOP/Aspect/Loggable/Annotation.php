@@ -2,7 +2,7 @@
 
 namespace PUGX\AOP\Aspect\Loggable;
 
-use PUGX\AOP\Aspect\Annotation as BaseAnnotation;
+use PUGX\AOP\Aspect\BaseAnnotation;
 use Psr\Log\LogLevel;
 
 /**

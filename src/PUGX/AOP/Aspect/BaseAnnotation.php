@@ -2,12 +2,12 @@
 
 namespace PUGX\AOP\Aspect;
 
-use Doctrine\Common\Annotations\Annotation as BaseAnnotation;
+use Doctrine\Common\Annotations\Annotation as DoctrineAnnotation;
 
 /**
  * @Annotation
  */
-class Annotation extends BaseAnnotation
+class BaseAnnotation extends DoctrineAnnotation
 {
     const START = 'start';
     const END   = 'end';
