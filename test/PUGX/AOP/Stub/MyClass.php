@@ -3,6 +3,7 @@
 namespace PUGX\AOP\Stub;
 
 use \PUGX\AOP\Aspect\Loggable\Annotation as Log;
+use \PUGX\AOP\Aspect\Roulette\Annotation as Roulette;
 use \stdClass;
 
 class MyClass
@@ -17,7 +18,6 @@ class MyClass
      * @Log(what="$this->b", when="end", with="monolog.logger_standard", as="The private property $this->b is %s")
      * @Log(what="$a", with="monolog.logger_standard", as="Logging some context", context={"$b","$a","$this->a"})
      * @Log(what="$a", when="end", with="monolog.logger_standard", as="Logging some context at the end!", context={"$this->a"})
-     * @PUGX\AOP\Stub\Annotation\Test
      * @param int $a
      * @param int $b
      */
@@ -26,8 +26,12 @@ class MyClass
         $this->a = $a + $b;
     }
 
-    public function some(stdClass $o)
+    /**
+     * @Roulette(probability="1")
+     * @param stdClass $o
+     */
+    public function randomError(stdClass $o)
     {
-
+        return $o;
     }
 }

@@ -4,6 +4,9 @@ services:
   loggable:
     class: "PUGX\\AOP\\Aspect\\Loggable\\Loggable"
     arguments: ["@service_container"]
+  roulette:
+    class: "PUGX\\AOP\\Aspect\\Roulette\\Roulette"
+    arguments: ["@service_container"]
   monolog.logger_standard:
     class: "Monolog\\Logger"
     arguments:

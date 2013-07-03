@@ -30,11 +30,28 @@ class MainTest extends TestCase
     {
         $proxyDir = TEST_BASE_DIR . "/proxy/";
 
-        $this->container->addCompilerPass(new Symfony2(new AnnotationReader(), $proxyDir, '\PUGX\AOP\Aspect\Loggable\Annotation', 'loggable'));
+        $this->container->addCompilerPass(new Symfony2(new AnnotationReader(), $proxyDir, '\PUGX\AOP\Aspect\BaseAnnotation', array('loggable', 'roulette')));
         $this->container->compile();
 
         $service = $this->container->get('my_service');
         $this->assertNotEquals("PUGX\\AOP\\Stub\\MyClass", get_class($service));
+    }
+
+    /**
+     * @expectedException        \Exception
+     * @expectedExceptionMessage Random error dispatched from Roulette aspect
+     */
+    public function testSimpleRoulette()
+    {
+        $proxyDir = TEST_BASE_DIR . "/proxy/";
+
+        $this->container->addCompilerPass(new Symfony2(new AnnotationReader(), $proxyDir, '\PUGX\AOP\Aspect\BaseAnnotation', array('loggable', 'roulette')));
+        $this->container->compile();
+
+        $service = $this->container->get('my_service');
+        $this->assertNotEquals("PUGX\\AOP\\Stub\\MyClass", get_class($service));
+
+        $service->randomError(new \stdClass);
     }
 }
 
