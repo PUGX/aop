@@ -135,33 +135,39 @@ class AspectGenerator implements GeneratorInterface
         $params = implode(', ', $this->getMethodParameters($method));
         $implementedAspects = $this->getImplementedAspects($method, $params);
 
-        $interceptorCode = sprintf(
-                '$reflection = new \ReflectionMethod(%s, %s);' . "\n",
-                var_export(ClassUtils::getUserClass($method->class), true), var_export($method->name, true)
-        );
+        $aspectedMethod = new AspectedMethod;
+        $aspectedMethod->addCode($this->generateReflectionDeclarationCode($method->class, $method->name),
+                AspectedMethod::DECLARATION);
+        $aspectedMethod->setCode($implementedAspects['before'], AspectedMethod::BEFORE);
+        $aspectedMethod->addCode($this->generateReflectionInvocationCode($params), AspectedMethod::EXECUTION);
+        $aspectedMethod->setCode($implementedAspects['after'], AspectedMethod::AFTER);
+        $aspectedMethod->addCode($this->generateReturningCode(), AspectedMethod::RETURNING);
 
         if ($method->name === '__construct') {
             foreach ($this->getRequiredAspects() as $aspect) {
-                $interceptorCode .= $this->getSetterCode($aspect) . "\n";
+                $aspectedMethod->addCode($this->getSetterCode($aspect), AspectedMethod::INJECTION);
             }
         }
 
-        $interceptorCode .= $this->filterImplementedAspect($implementedAspects['before']);
-        $interceptorCode .= sprintf('$return = $reflection->invokeArgs($this, array(%s));' . "\n\n", $params);
-        $interceptorCode .= $this->filterImplementedAspect($implementedAspects['after']);
-        $interceptorCode .= 'return $return;';
-
-        return $interceptorCode;
+        return $aspectedMethod->getMethodCode();
     }
 
-    /**
-     * Simple validation
-     * @param string $implementation
-     * @return string
-     */
-    protected function filterImplementedAspect($implementation)
+    protected function generateReturningCode()
     {
-        return (($implementation) ? $implementation . "\n" : "");
+        return 'return $return;';
+    }
+
+    protected function generateReflectionDeclarationCode($className, $methodName)
+    {
+        return sprintf(
+                        '$reflection = new \ReflectionMethod(%s, %s);',
+                        var_export(ClassUtils::getUserClass($className), true), var_export($methodName, true)
+        );
+    }
+
+    protected function generateReflectionInvocationCode($params)
+    {
+        return sprintf('$return = $reflection->invokeArgs($this, array(%s));', $params);
     }
 
     protected function getMethodParameters(ReflectionMethod $method)
@@ -282,7 +288,7 @@ class AspectGenerator implements GeneratorInterface
             $this->markAspectAsRequired($annotation);
 
             $interceptorCode = sprintf(
-                    'if(($result = $this->%s->trigger(new \%s(array(%s)), $this, \'%s\', array(%s))) !== null) return $result;' . "\n",
+                    'if(($result = $this->%s->trigger(new \%s(array(%s)), $this, \'%s\', array(%s))) !== null) return $result;',
                     $this->getAspectPropertyName($annotation->getAspectName()), get_class($annotation),
                     implode(', ', $this->getAnnotationParameters($annotation)), $name, $params);
         }
@@ -326,12 +332,12 @@ class AspectGenerator implements GeneratorInterface
     protected function getImplementedAspects(ReflectionMethod $method, $params)
     {
         $annotations = $this->getAspectAnnotations($method);
-        $before = $after = "";
+        $before = $after = array();
         foreach ($annotations as $annotation) {
             /** @var BaseAnnotation $annotation */
-            $before .= $this->generateAspectCode($method->name, BaseAnnotation::START, $annotation, $params);
+            $before[] = $this->generateAspectCode($method->name, BaseAnnotation::START, $annotation, $params);
 
-            $after .= $this->generateAspectCode($method->name, BaseAnnotation::END, $annotation, $params);
+            $after[] = $this->generateAspectCode($method->name, BaseAnnotation::END, $annotation, $params);
         }
         return array('before' => $before, 'after' => $after);
     }
