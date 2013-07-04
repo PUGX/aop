@@ -2,7 +2,6 @@
 
 namespace PUGX\AOP;
 
-use CG\Core\ClassUtils;
 use CG\Generator\PhpClass;
 use CG\Generator\PhpMethod;
 use CG\Generator\PhpParameter;
@@ -24,7 +23,6 @@ class AspectGenerator implements GeneratorInterface
      * @var Reader
      */
     protected $annotationsReader;
-    protected $prefix = '__CG_PUGX_AOP__';
     protected $annotationClassName;
     protected $requiredAspects = array();
 
@@ -133,41 +131,23 @@ class AspectGenerator implements GeneratorInterface
     protected function generateMethodCode(ReflectionMethod $method)
     {
         $params = implode(', ', $this->getMethodParameters($method));
-        $implementedAspects = $this->getImplementedAspects($method, $params);
+        $generator = new AspectCodeGenerator($method->class, $method->name, $params);
+        $implementedAspects = $this->getImplementedAspects($method, $generator);
 
         $aspectedMethod = new AspectedMethod;
-        $aspectedMethod->addCode($this->generateReflectionDeclarationCode($method->class, $method->name),
-                AspectedMethod::DECLARATION);
+        $aspectedMethod->addCode($generator->generateReflectionDeclarationCode(), AspectedMethod::DECLARATION);
         $aspectedMethod->setCode($implementedAspects['before'], AspectedMethod::BEFORE);
-        $aspectedMethod->addCode($this->generateReflectionInvocationCode($params), AspectedMethod::EXECUTION);
+        $aspectedMethod->addCode($generator->generateReflectionInvocationCode(), AspectedMethod::EXECUTION);
         $aspectedMethod->setCode($implementedAspects['after'], AspectedMethod::AFTER);
-        $aspectedMethod->addCode($this->generateReturningCode(), AspectedMethod::RETURNING);
+        $aspectedMethod->addCode($generator->generateReturningCode(), AspectedMethod::RETURNING);
 
         if ($method->name === '__construct') {
             foreach ($this->getRequiredAspects() as $aspect) {
-                $aspectedMethod->addCode($this->getSetterCode($aspect), AspectedMethod::INJECTION);
+                $aspectedMethod->addCode($generator->getSetterCode($aspect), AspectedMethod::INJECTION);
             }
         }
 
         return $aspectedMethod->getMethodCode();
-    }
-
-    protected function generateReturningCode()
-    {
-        return 'return $return;';
-    }
-
-    protected function generateReflectionDeclarationCode($className, $methodName)
-    {
-        return sprintf(
-                        '$reflection = new \ReflectionMethod(%s, %s);',
-                        var_export(ClassUtils::getUserClass($className), true), var_export($methodName, true)
-        );
-    }
-
-    protected function generateReflectionInvocationCode($params)
-    {
-        return sprintf('$return = $reflection->invokeArgs($this, array(%s));', $params);
     }
 
     protected function getMethodParameters(ReflectionMethod $method)
@@ -190,9 +170,10 @@ class AspectGenerator implements GeneratorInterface
     {
         $aspects = $this->getRequiredAspects();
         $generatedClass->setMethod($this->generateMethod($originalClass->getConstructor(), $aspects));
+        $generator = new AspectCodeGenerator($originalClass->name);
         foreach ($aspects as $aspect) {
-            $generatedClass->setProperty($this->generateAspectProperty($aspect));
-            $generatedClass->setMethod($this->generateAspectSetter($aspect));
+            $generatedClass->setProperty($this->generateAspectProperty($aspect, $generator));
+            $generatedClass->setMethod($this->generateAspectSetter($aspect, $generator));
         }
         return $generatedClass;
     }
@@ -203,11 +184,11 @@ class AspectGenerator implements GeneratorInterface
      * @param string $aspect
      * @return \CG\Generator\PhpProperty
      */
-    protected function generateAspectProperty($aspect)
+    protected function generateAspectProperty($aspect, AspectCodeGenerator $generator)
     {
         $interceptorLoader = new PhpProperty();
         $interceptorLoader
-                ->setName($this->getAspectPropertyName($aspect))
+                ->setName($generator->getAspectPropertyName($aspect))
                 ->setVisibility(PhpProperty::VISIBILITY_PRIVATE)
         ;
         return $interceptorLoader;
@@ -219,39 +200,17 @@ class AspectGenerator implements GeneratorInterface
      * @param string $aspect
      * @return \CG\Generator\PhpMethod
      */
-    protected function generateAspectSetter($aspect)
+    protected function generateAspectSetter($aspect, AspectCodeGenerator $generator)
     {
         $loaderSetter = new PhpMethod();
         $loaderSetter
-                ->setName('set' . $this->prefix . 'Aspect' . ucfirst($aspect))
+                ->setName($generator->getSetterName($aspect))
                 ->setVisibility(PhpMethod::VISIBILITY_PUBLIC)
-                ->setBody($this->getSetterCode($aspect))
+                ->setBody($generator->getSetterCode($aspect))
         ;
 
         $loaderSetter->addParameter($this->generateAspectParameter($aspect));
         return $loaderSetter;
-    }
-
-    /**
-     * Generate the code for the aspect setting
-     *
-     * @param string $aspect
-     * @return string
-     */
-    protected function getSetterCode($aspect)
-    {
-        return '$this->' . $this->getAspectPropertyName($aspect) . ' = $aspect' . ucfirst($aspect) . ';';
-    }
-
-    /**
-     * Generate the name of the property containing the received aspect
-     *
-     * @param string $aspect
-     * @return string
-     */
-    protected function getAspectPropertyName($aspect)
-    {
-        return $this->prefix . 'aspect' . $aspect;
     }
 
     /**
@@ -275,22 +234,21 @@ class AspectGenerator implements GeneratorInterface
      * If the aspect execution returns a not null value, the generated method should break the
      * aspect execution chain and return the received value
      *
-     * @param $name
-     * @param $when
-     * @param BaseAnnotation $annotation
-     * @param $params
+     * @param string $when
+     * @param \PUGX\AOP\Aspect\BaseAnnotation $annotation
+     * @param \PUGX\AOP\AspectCodeGenerator $generator
      * @return string
      */
-    protected function generateAspectCode($name, $when, BaseAnnotation $annotation, $params)
+    protected function generateAspectCode($when, BaseAnnotation $annotation, AspectCodeGenerator $generator)
     {
         $interceptorCode = '';
         if ($annotation->isTriggeredAt($when)) {
             $this->markAspectAsRequired($annotation);
 
-            $interceptorCode = sprintf(
-                    'if(($result = $this->%s->trigger(new \%s(array(%s)), $this, \'%s\', array(%s))) !== null) return $result;',
-                    $this->getAspectPropertyName($annotation->getAspectName()), get_class($annotation),
-                    implode(', ', $this->getAnnotationParameters($annotation)), $name, $params);
+            $interceptorCode = $generator->generateAspectCode(
+                    $annotation->getAspectName(), get_class($annotation),
+                    implode(', ', $this->getAnnotationParameters($annotation))
+            );
         }
 
         return $interceptorCode;
@@ -326,18 +284,18 @@ class AspectGenerator implements GeneratorInterface
      * Get the implementation of all the required aspects for a method
      *
      * @param ReflectionMethod $method
-     * @param string $params
+     * @param \PUGX\AOP\AspectCodeGenerator $generator
      * @return array
      */
-    protected function getImplementedAspects(ReflectionMethod $method, $params)
+    protected function getImplementedAspects(ReflectionMethod $method, AspectCodeGenerator $generator)
     {
         $annotations = $this->getAspectAnnotations($method);
         $before = $after = array();
         foreach ($annotations as $annotation) {
             /** @var BaseAnnotation $annotation */
-            $before[] = $this->generateAspectCode($method->name, BaseAnnotation::START, $annotation, $params);
+            $before[] = $this->generateAspectCode(BaseAnnotation::START, $annotation, $generator);
 
-            $after[] = $this->generateAspectCode($method->name, BaseAnnotation::END, $annotation, $params);
+            $after[] = $this->generateAspectCode(BaseAnnotation::END, $annotation, $generator);
         }
         return array('before' => $before, 'after' => $after);
     }
