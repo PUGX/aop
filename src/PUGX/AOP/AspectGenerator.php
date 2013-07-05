@@ -77,7 +77,7 @@ class AspectGenerator implements GeneratorInterface
             $generatedClass->setMethod($this->generateMethod($method));
         }
 
-        $generatedClass = $this->prepareAspectInjection($originalClass, $generatedClass);
+        $this->prepareAspectInjection($originalClass, $generatedClass);
     }
 
     /**
