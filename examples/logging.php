@@ -6,8 +6,7 @@ namespace Example;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\Config\FileLocator;
-use PUGX\AOP\Aspect\Loggable;
-use PUGX\AOP\Manager;
+use PUGX\AOP\Aspect\Loggable\Loggable;
 use Doctrine\Common\Annotations\AnnotationRegistry;
 
 // integrate autoloading with composer and annotations mapping

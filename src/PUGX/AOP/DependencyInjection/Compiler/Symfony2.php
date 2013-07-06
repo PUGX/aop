@@ -29,7 +29,7 @@ class Symfony2 implements CompilerPassInterface
 
     protected $annotationClassName;
 
-    protected $serviceName;
+    protected $serviceNames;
 
     /**
      * Constructor
@@ -37,15 +37,16 @@ class Symfony2 implements CompilerPassInterface
      * @param Reader $annotationReader
      * @param $proxyDirectory
      * @param string $annotationClassName
-     * @param string $serviceName
+     * @param string|array $serviceNames
      * @internal param array $annotations
      */
-    public function __construct(Reader $annotationReader, $proxyDirectory, $annotationClassName, $serviceName)
+    public function __construct(Reader $annotationReader, $proxyDirectory, $annotationClassName, $serviceNames)
     {
         $this->annotationReader    = $annotationReader;
         $this->proxyDirectory      = $proxyDirectory;
-        $this->serviceName         = $serviceName;
+        $this->serviceNames        = (is_array($serviceNames)) ? $serviceNames : array($serviceNames);
         $this->annotationClassName = $annotationClassName;
+        sort($this->serviceNames);
     }
 
     /**
@@ -82,7 +83,9 @@ class Symfony2 implements CompilerPassInterface
 
             $definition->setFile($filename);
             $definition->setClass($pg->getClassName($refClass));
-            $definition->addArgument(new Reference($this->serviceName));
+            foreach($this->serviceNames as $serviceName){
+                $definition->addArgument(new Reference($serviceName));
+            }
         }
     }
 }
