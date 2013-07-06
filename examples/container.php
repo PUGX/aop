@@ -26,7 +26,7 @@ $proxyDir = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'test' 
 
 require 'MyClassExample.php';
 
-$symfony2Compiler = new Symfony2(new AnnotationReader(), $proxyDir, '\PUGX\AOP\Aspect\BaseAnnotation', array('loggable', 'roulette'));
+$symfony2Compiler = new Symfony2(new AnnotationReader(), $proxyDir, '\PUGX\AOP\Aspect\BaseAnnotation', array('roulette', 'loggable'));
 $container->addCompilerPass($symfony2Compiler);
 $container->compile();
 

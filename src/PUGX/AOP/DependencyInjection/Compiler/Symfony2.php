@@ -46,6 +46,7 @@ class Symfony2 implements CompilerPassInterface
         $this->proxyDirectory      = $proxyDirectory;
         $this->serviceNames        = (is_array($serviceNames)) ? $serviceNames : array($serviceNames);
         $this->annotationClassName = $annotationClassName;
+        sort($this->serviceNames);
     }
 
     /**
