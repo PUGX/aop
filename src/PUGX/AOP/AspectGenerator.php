@@ -139,9 +139,10 @@ class AspectGenerator implements GeneratorInterface
 
         $aspectedMethod = new AspectedMethod;
         $aspectedMethod->addCode($generator->generateReflectionDeclarationCode(), AspectedMethod::DECLARATION);
-        $aspectedMethod->setCode($implementedAspects['before'], AspectedMethod::BEFORE);
+        $aspectedMethod->setCode($implementedAspects[AspectedMethod::BEFORE], AspectedMethod::BEFORE);
         $aspectedMethod->addCode($generator->generateReflectionInvocationCode(), AspectedMethod::EXECUTION);
-        $aspectedMethod->setCode($implementedAspects['after'], AspectedMethod::AFTER);
+        $aspectedMethod->setCode($implementedAspects[AspectedMethod::VALIDATION], AspectedMethod::VALIDATION);
+        $aspectedMethod->setCode($implementedAspects[AspectedMethod::AFTER], AspectedMethod::AFTER);
         $aspectedMethod->addCode($generator->generateReturningCode(), AspectedMethod::RETURNING);
 
         if ($method->name === '__construct') {

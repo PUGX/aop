@@ -57,8 +57,7 @@ class AspectCodeGenerator
     public function generateReflectionDeclarationCode()
     {
         return sprintf(
-                        '$reflection = new \ReflectionMethod(%s, %s);',
-                        var_export(ClassUtils::getUserClass($this->className), true),
+                        '$reflection = new \ReflectionMethod($this->_subjectClass, %s);',
                         var_export($this->methodName, true)
         );
     }
