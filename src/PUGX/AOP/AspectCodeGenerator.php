@@ -79,14 +79,16 @@ class AspectCodeGenerator
      * @param string $aspectName
      * @param string $annotationClass
      * @param string $annotationParams
+     * @param string|null $parameter
      * @return String
      */
-    public function generateAspectCode($aspectName, $annotationClass, $annotationParams)
+    public function generateAspectCode($aspectName, $annotationClass, $annotationParams, $parameter = null)
     {
+        $finalAction = ($parameter) ? '$'.$parameter.' =' : 'return';
         return sprintf(
-                        'if(($result = $this->%s->trigger(new \%s(array(%s)), $this, \'%s\', array(%s))) !== null) return $result;',
+                        'if(($result = $this->%s->trigger(new \%s(array(%s)), $this, \'%s\', array(%s))) !== null) %s $result;',
                         $this->getAspectPropertyName($aspectName), $annotationClass, $annotationParams,
-                        $this->methodName, $this->params
+                        $this->methodName, $this->params, $finalAction
         );
     }
 

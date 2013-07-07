@@ -13,13 +13,15 @@ class AspectedMethod
     const DECLARATION = 1;
     const INJECTION = 0;
     const BEFORE = 2;
-    const EXECUTION = 3;
-    const AFTER = 4;
-    const RETURNING = 5;
+    const VALIDATION = 3;
+    const EXECUTION = 4;
+    const AFTER = 5;
+    const RETURNING = 6;
 
     private static $stages = array(
         self::DECLARATION => 'Declaration',
         self::INJECTION => 'Injection',
+        self::VALIDATION => 'Validation',
         self::BEFORE => 'Before',
         self::EXECUTION => 'Execution',
         self::AFTER => 'After',

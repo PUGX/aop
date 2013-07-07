@@ -78,6 +78,7 @@ class AspectGenerator implements GeneratorInterface
         }
 
         $this->prepareAspectInjection($originalClass, $generatedClass);
+        $this->exposeSubjectClass($originalClass, $generatedClass);
     }
 
     /**
@@ -181,25 +182,52 @@ class AspectGenerator implements GeneratorInterface
     }
 
     /**
+     * Adds a propery and a getter for the class name of the enhaced class
+     *
+     * @param \ReflectionClass $originalClass
+     * @param \CG\Generator\PhpClass $generatedClass
+     */
+    protected function exposeSubjectClass(\ReflectionClass $originalClass, PhpClass $generatedClass)
+    {
+        $generatedClass->setProperty($this->generateProperty('_subjectClass', $originalClass->getName()));
+        $generatedClass->setMethod($this->generateSubjectClassGetter());
+    }
+
+    /**
      * Create a property for the received aspect name
      *
      * @param string $aspect
+     * @param \PUGX\AOP\AspectCodeGenerator $generator
      * @return \CG\Generator\PhpProperty
      */
     protected function generateAspectProperty($aspect, AspectCodeGenerator $generator)
     {
-        $interceptorLoader = new PhpProperty();
-        $interceptorLoader
-                ->setName($generator->getAspectPropertyName($aspect))
+        return $this->generateProperty($generator->getAspectPropertyName($aspect));
+    }
+
+    /**
+     * Create a property
+     *
+     * @param string $propertyName
+     * @param mixed|null $value
+     * @return \CG\Generator\PhpProperty
+     */
+    protected function generateProperty($propertyName, $value = null)
+    {
+        $property = new PhpProperty();
+        $property
+                ->setName($propertyName)
                 ->setVisibility(PhpProperty::VISIBILITY_PRIVATE)
+                ->setDefaultValue($value)
         ;
-        return $interceptorLoader;
+        return $property;
     }
 
     /**
      * Create a setter for the aspect property with the received aspect name
      *
      * @param string $aspect
+     * @param \PUGX\AOP\AspectCodeGenerator $generator
      * @return \CG\Generator\PhpMethod
      */
     protected function generateAspectSetter($aspect, AspectCodeGenerator $generator)
@@ -209,10 +237,42 @@ class AspectGenerator implements GeneratorInterface
                 ->setName($generator->getSetterName($aspect))
                 ->setVisibility(PhpMethod::VISIBILITY_PUBLIC)
                 ->setBody($generator->getSetterCode($aspect))
+                ->addParameter($this->generateAspectParameter($aspect))
         ;
-
-        $loaderSetter->addParameter($this->generateAspectParameter($aspect));
         return $loaderSetter;
+    }
+
+    /**
+     * Create a getter for the subject class name
+     *
+     * @return \CG\Generator\PhpMethod
+     */
+    protected function generateSubjectClassGetter()
+    {
+        $getter = new PhpMethod();
+        $getter
+                ->setName('getSubjectClass')
+                ->setVisibility(PhpMethod::VISIBILITY_PUBLIC)
+                ->setBody('return $this->_subjectClass;')
+        ;
+        return $getter;
+    }
+
+    /**
+     * Generate a parameter for a method
+     *
+     * @param string $name
+     * @param string|null $type
+     * @return \CG\Generator\PhpParameter
+     */
+    protected function generateParameter($name, $type = null)
+    {
+        $param = new PhpParameter();
+        $param->setName($name);
+        if($type) {
+            $param->setType($type);
+        }
+        return $param;
     }
 
     /**
@@ -223,12 +283,7 @@ class AspectGenerator implements GeneratorInterface
      */
     protected function generateAspectParameter($aspect)
     {
-        $loaderParam = new PhpParameter();
-        $loaderParam
-                ->setName('aspect' . ucfirst($aspect))
-                ->setType('PUGX\AOP\Aspect\AspectInterface')
-        ;
-        return $loaderParam;
+        return $this->generateParameter('aspect' . ucfirst($aspect), 'PUGX\AOP\Aspect\AspectInterface');
     }
 
     /**
@@ -249,7 +304,8 @@ class AspectGenerator implements GeneratorInterface
 
             $interceptorCode = $generator->generateAspectCode(
                     $annotation->getAspectName(), get_class($annotation),
-                    implode(', ', $this->getAnnotationParameters($annotation))
+                    implode(', ', $this->getAnnotationParameters($annotation)),
+                    $annotation->getParameterToInspect()
             );
         }
 
@@ -292,21 +348,21 @@ class AspectGenerator implements GeneratorInterface
     protected function getImplementedAspects(ReflectionMethod $method, AspectCodeGenerator $generator)
     {
         $annotations = $this->getFilteredAnnotations($method);
-        $before = $after = array();
+        $before = $after = $validation = array();
         foreach ($annotations as $annotation) {
             /** @var BaseAnnotation $annotation */
             $before[] = $this->generateAspectCode(BaseAnnotation::START, $annotation, $generator);
-
             $after[] = $this->generateAspectCode(BaseAnnotation::END, $annotation, $generator);
+            $validation[] = $this->generateAspectCode(BaseAnnotation::VALIDATION, $annotation, $generator);
         }
-        return array('before' => $before, 'after' => $after);
+        return array(AspectedMethod::BEFORE => $before, AspectedMethod::AFTER => $after, AspectedMethod::VALIDATION => $validation);
     }
 
     protected function generateDocBlock(ReflectionMethod $method, AspectCodeGenerator $generator)
     {
         $docBlock = '';
         $docLines = $generator->generateDocBlockLines($this->getFilteredAnnotations($method, false));
-        if(count($docLines)) {
+        if (count($docLines)) {
             $docBlock = "/**\n" . implode("\n", $docLines) . "\n */\n";
         }
         return $docBlock;
