@@ -6,8 +6,13 @@ namespace Example;
 use PUGX\AOP\Aspect\Loggable\Annotation as Log;
 use PUGX\AOP\Aspect\Roulette\Annotation as Roulette;
 
-// now, lets say that I have this class, I enabled Loggable in the constructor and
-// the doSomething method
+/**
+ * now, lets say that I have this class, I enabled Loggable in the constructor and
+ * the doSomething method
+ *
+ * @\PUGX\AOP\Stub\MyAnnotation
+ * @link https://github.com/PUGX/aop the aop project homepage
+ */
 class MyExampleClass
 {
     protected $a;
@@ -26,6 +31,7 @@ class MyExampleClass
      * @Log(what="$c", when="start", with="monolog.logger_standard", as="argument $c is %s")
      * @Log(what="$this->b", when="start", with="monolog.logger_standard", as="Hey, value of MyExampleClass::b is %s")
      * @Log(what="$this->b", when="end", with="monolog.logger_standard", as="HOLY COW! Now MyExampleClass::b is %s")
+     * @\PUGX\AOP\Stub\MyAnnotation
      */
     public function doSomething($c)
     {
