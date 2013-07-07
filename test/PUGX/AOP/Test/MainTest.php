@@ -4,37 +4,32 @@ namespace PUGX\AOP\Test;
 
 use Doctrine\Common\Annotations\AnnotationReader;
 use \PHPUnit_Framework_TestCase as TestCase;
-use Pimple;
 use PUGX\AOP\DependencyInjection\Compiler\Symfony2;
-use PUGX\AOP\DependencyInjection\CompilerResolver;
-use Monolog\Logger;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\Config\FileLocator;
 
 class MainTest extends TestCase
 {
-    protected $container;
-    
+
+    protected $service;
+
     public function setUp()
     {
-        parent::setUp();
+        $container = new ContainerBuilder();
 
-        $this->container = new ContainerBuilder();
-
-        $loader = new YamlFileLoader($this->container, new FileLocator(__DIR__));
+        $loader = new YamlFileLoader($container, new FileLocator(__DIR__));
         $loader->load(TEST_BASE_DIR . '/container.yml');
-    }
-    
-    public function testSimpleLogging()
-    {
         $proxyDir = TEST_BASE_DIR . "/proxy/";
 
-        $this->container->addCompilerPass(new Symfony2(new AnnotationReader(), $proxyDir, '\PUGX\AOP\Aspect\BaseAnnotation', array('loggable', 'roulette')));
-        $this->container->compile();
+        $container->addCompilerPass(new Symfony2(new AnnotationReader(), $proxyDir, '\PUGX\AOP\Aspect\BaseAnnotation', array('loggable', 'validator', 'roulette')));
+        $container->compile();
+        $this->service = $container->get('my_service');
+    }
 
-        $service = $this->container->get('my_service');
-        $this->assertNotEquals("PUGX\\AOP\\Stub\\MyClass", get_class($service));
+    public function testSimpleLogging()
+    {
+        $this->assertNotEquals("PUGX\\AOP\\Stub\\MyClass", get_class($this->service));
     }
 
     /**
@@ -43,15 +38,18 @@ class MainTest extends TestCase
      */
     public function testSimpleRoulette()
     {
-        $proxyDir = TEST_BASE_DIR . "/proxy/";
-
-        $this->container->addCompilerPass(new Symfony2(new AnnotationReader(), $proxyDir, '\PUGX\AOP\Aspect\BaseAnnotation', array('loggable', 'roulette')));
-        $this->container->compile();
-
-        $service = $this->container->get('my_service');
-        $this->assertNotEquals("PUGX\\AOP\\Stub\\MyClass", get_class($service));
-
-        $service->randomError(new \stdClass);
+        $this->service->randomError(new \stdClass);
     }
+
+    /**
+     * @expectedException        \Exception
+     * @expectedExceptionMessage The parameter [a] has an invalid value [-1]
+     */
+    public function testSimpleValidator()
+    {
+        $this->assertEquals(2, $this->service->getSquareRoot(4));
+        $this->service->getSquareRoot(-1);
+    }
+
 }
 

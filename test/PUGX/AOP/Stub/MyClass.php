@@ -4,6 +4,7 @@ namespace PUGX\AOP\Stub;
 
 use \PUGX\AOP\Aspect\Loggable\Annotation as Log;
 use \PUGX\AOP\Aspect\Roulette\Annotation as Roulette;
+use PUGX\AOP\Aspect\Validator\Annotation as Validator;
 use \stdClass;
 
 /**
@@ -40,5 +41,15 @@ class MyClass
     public function randomError(stdClass $o)
     {
         return $o;
+    }
+
+    /**
+     * @Validator(parameter="a",value=Validator::POSITIVE)
+     * @param float $a
+     * @return float
+     */
+    public function getSquareRoot($a)
+    {
+        return sqrt($a);
     }
 }

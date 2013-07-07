@@ -7,6 +7,9 @@ services:
   roulette:
     class: "PUGX\\AOP\\Aspect\\Roulette\\Roulette"
     arguments: ["@service_container"]
+  validator:
+    class: "PUGX\\AOP\\Aspect\\Validator\\Validator"
+    arguments: ["@service_container"]
   monolog.logger_standard:
     class: "Monolog\\Logger"
     arguments:
