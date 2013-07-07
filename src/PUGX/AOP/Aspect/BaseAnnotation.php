@@ -11,6 +11,7 @@ class BaseAnnotation extends DoctrineAnnotation
 {
 
     const START = 'start';
+    const VALIDATION = 'validation';
     const END = 'end';
 
     public $when = self::START;
@@ -36,6 +37,16 @@ class BaseAnnotation extends DoctrineAnnotation
     public function getAspectName()
     {
         return $this->_aspectName;
+    }
+
+    /**
+     * Get the parameter to be inspected by the aspect service.
+     *
+     * @return null
+     */
+    public function getParameterToInspect()
+    {
+        return null;
     }
 
 }

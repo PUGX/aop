@@ -21,7 +21,7 @@ interface AspectInterface
      * @param $instance
      * @param $methodName
      * @param array $arguments
-     * @return void
+     * @return mixed
      */
     public function trigger(BaseAnnotation $annotation, $instance, $methodName, array $arguments);
 }
