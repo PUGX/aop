@@ -3,7 +3,8 @@
 namespace PUGX\AOP\Aspect\Validator;
 
 use PUGX\AOP\Aspect\AspectInterface,
-    PUGX\AOP\Aspect\BaseAnnotation;
+    PUGX\AOP\Aspect\BaseAnnotation,
+    PUGX\AOP\Exception;
 use Respect\Validation\Validator as v;
 
 class Validator implements AspectInterface
@@ -28,13 +29,13 @@ class Validator implements AspectInterface
                 return $this->validate($annotation, $arguments[$key]);
             }
         }
-        throw new \Exception($parameterToInspect . ' not found!');
+        throw new Exception($parameterToInspect . ' not found!');
     }
 
     protected function validate($annotation, $value)
     {
         if (!$this->getValidator($annotation->value)->validate($value)) {
-            throw new \Exception('The parameter [' . $annotation->getParameterToInspect() . "] has an invalid value [$value]");
+            throw new Exception('The parameter [' . $annotation->getParameterToInspect() . "] has an invalid value [$value]");
         }
     }
     
@@ -57,7 +58,7 @@ class Validator implements AspectInterface
                 return v::not(v::equals(null));
                 break;
         }
-        throw new \Exception('Validator not found!');
+        throw new Exception('Validator not found!');
     }
 
 }

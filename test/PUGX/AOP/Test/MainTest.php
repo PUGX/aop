@@ -33,7 +33,7 @@ class MainTest extends TestCase
     }
 
     /**
-     * @expectedException        \Exception
+     * @expectedException        \PUGX\AOP\Exception
      * @expectedExceptionMessage Random error dispatched from Roulette aspect
      */
     public function testSimpleRoulette()
@@ -42,7 +42,7 @@ class MainTest extends TestCase
     }
 
     /**
-     * @expectedException        \Exception
+     * @expectedException        \PUGX\AOP\Exception
      * @expectedExceptionMessage The parameter [a] has an invalid value [-1]
      */
     public function testSimpleValidator()
