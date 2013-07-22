@@ -2,7 +2,7 @@
 
 namespace PUGX\AOP\Aspect\Loggable;
 
-use PUGX\AOP\Aspect\Annotation as BaseAnnotation;
+use PUGX\AOP\Aspect\BaseAnnotation;
 use Psr\Log\LogLevel;
 
 /**
@@ -17,6 +17,7 @@ class Annotation extends BaseAnnotation
     public $as;
     public $context = array();
     public $level = LogLevel::INFO;
+    protected $_aspectName = 'Loggable';
 
     /**
      * Returns all the variables that should be logged as context in the scope
