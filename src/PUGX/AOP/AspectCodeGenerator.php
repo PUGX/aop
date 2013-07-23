@@ -3,6 +3,8 @@
 namespace PUGX\AOP;
 
 use CG\Core\ClassUtils;
+use \ReflectionClass;
+use \ReflectionProperty;
 
 /**
  * Encapsulates all the patterns for the enhaced proxy class generation
@@ -24,6 +26,16 @@ class AspectCodeGenerator
         }
         $this->className = $className;
         $this->methodName = $methodName;
+        $this->params = $params;
+    }
+
+    /**
+     * Set the params property
+     *
+     * @param array $params
+     */
+    public function setParams($params)
+    {
         $this->params = $params;
     }
 
@@ -76,6 +88,57 @@ class AspectCodeGenerator
                         $this->getAspectPropertyName($aspectName), $annotationClass, $annotationParams,
                         $this->methodName, $this->params
         );
+    }
+
+    /**
+     * Regenerates an annotation
+     *
+     * @param array $annotations
+     * @return array
+     */
+    public function generateDocBlockLines($annotations)
+    {
+        $docLines = array();
+        foreach ($annotations as $annotation) {
+            $docLines[] = ' * @\\' . get_class($annotation) . '(' .
+                    implode(', ', $this->getParsedAnnotationProperties($annotation)) .
+                    ")";
+        }
+        return $docLines;
+    }
+
+    /**
+     * Get a list of parsed annotation properties
+     *
+     * @param type $annotation
+     * @return array
+     */
+    protected function getParsedAnnotationProperties($annotation)
+    {
+        $refClass = new ReflectionClass(get_class($annotation));
+        $parsedProperties = array();
+        foreach ($refClass->getProperties() as $annotationProperty) {
+            $parsedProperties[] = $annotationProperty->name . '="' .
+                    $this->getParsedAnnotationPropertyValues($annotationProperty, $annotation) . '"';
+        }
+        return $parsedProperties;
+    }
+
+    /**
+     * Get the value of the received property as a string
+     *
+     * @param ReflectionProperty $annotationProperty
+     * @param mixed $annotation
+     * @return string
+     */
+    protected function getParsedAnnotationPropertyValues(ReflectionProperty $annotationProperty, $annotation)
+    {
+        $annotationProperty->setAccessible(true);
+        $value = $annotationProperty->getValue($annotation);
+        if (is_array($value)) {
+            $value = implode(',', $value);
+        }
+        return $value;
     }
 
     /**

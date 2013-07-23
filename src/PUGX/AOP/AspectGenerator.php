@@ -56,7 +56,7 @@ class AspectGenerator implements GeneratorInterface
         $count = 0;
         /** @var ReflectionMethod $method */
         foreach ($methods as $method) {
-            $count = count($this->getAspectAnnotations($method));
+            $count = count($this->getFilteredAnnotations($method));
             if ($count > 0) {
                 return true;
             }
@@ -110,9 +110,10 @@ class AspectGenerator implements GeneratorInterface
      */
     protected function generateMethod(ReflectionMethod $method, $aspects = array())
     {
+        $generator = new AspectCodeGenerator($method->class, $method->name);
         $genMethod = PhpMethod::fromReflection($method)
-                ->setBody($this->generateMethodCode($method))
-                ->setDocblock(null)
+                ->setBody($this->generateMethodCode($method, $generator))
+                ->setDocblock($this->generateDocBlock($method, $generator))
         ;
         foreach ($aspects as $aspect) {
             $genMethod->addParameter($this->generateAspectParameter($aspect));
@@ -126,12 +127,13 @@ class AspectGenerator implements GeneratorInterface
      * the method execution
      *
      * @param ReflectionMethod $method
+     * @param \PUGX\AOP\AspectCodeGenerator $generator
      * @return string
      */
-    protected function generateMethodCode(ReflectionMethod $method)
+    protected function generateMethodCode(ReflectionMethod $method, AspectCodeGenerator $generator)
     {
         $params = implode(', ', $this->getMethodParameters($method));
-        $generator = new AspectCodeGenerator($method->class, $method->name, $params);
+        $generator->setParams($params);
         $implementedAspects = $this->getImplementedAspects($method, $generator);
 
         $aspectedMethod = new AspectedMethod;
@@ -289,7 +291,7 @@ class AspectGenerator implements GeneratorInterface
      */
     protected function getImplementedAspects(ReflectionMethod $method, AspectCodeGenerator $generator)
     {
-        $annotations = $this->getAspectAnnotations($method);
+        $annotations = $this->getFilteredAnnotations($method);
         $before = $after = array();
         foreach ($annotations as $annotation) {
             /** @var BaseAnnotation $annotation */
@@ -300,8 +302,18 @@ class AspectGenerator implements GeneratorInterface
         return array('before' => $before, 'after' => $after);
     }
 
+    protected function generateDocBlock(ReflectionMethod $method, AspectCodeGenerator $generator)
+    {
+        $docBlock = '';
+        $docLines = $generator->generateDocBlockLines($this->getFilteredAnnotations($method, false));
+        if(count($docLines)) {
+            $docBlock = "/**\n" . implode("\n", $docLines) . "\n */\n";
+        }
+        return $docBlock;
+    }
+
     /**
-     * Retrieves all the annotations for the current aspect.
+     * Filters all the annotations for the current aspect.
      * This is a convenient method since you might end up having different
      * annotations in a method and when an aspect is processing a method it only
      * wants to deal with the annotations that are meaningful to it.
@@ -309,13 +321,13 @@ class AspectGenerator implements GeneratorInterface
      * @param ReflectionMethod $refMethod
      * @return array
      */
-    protected function getAspectAnnotations(ReflectionMethod $refMethod)
+    protected function getFilteredAnnotations(ReflectionMethod $refMethod, $aspected = true)
     {
         $annotations = $this->getAnnotationsReader()->getMethodAnnotations($refMethod);
         $annotationsClass = $this->getAnnotationsClass();
 
         foreach ($annotations as $key => $annotation) {
-            if (!$annotation instanceOf $annotationsClass) {
+            if (($annotation instanceOf $annotationsClass) != $aspected) {
                 unset($annotations[$key]);
             }
         }

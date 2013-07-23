@@ -73,8 +73,9 @@ class ProxyGenerator extends AbstractClassGenerator
                 ->writeln(' * This code was generated automatically by the CG library, manual changes to it')
                 ->writeln(' * will be lost upon next generation.')
                 ->writeln(' */')
+                ->writeln('')
             ;
-            $docBlock = $writer->getContent();
+            $docBlock = $writer->getContent() . $this->class->getDocComment() ."\n";
         }
 
         $this->generatedClass = PhpClass::create()

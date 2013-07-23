@@ -6,6 +6,12 @@ use \PUGX\AOP\Aspect\Loggable\Annotation as Log;
 use \PUGX\AOP\Aspect\Roulette\Annotation as Roulette;
 use \stdClass;
 
+/**
+ * Some doc comments here!
+ *
+ * @MyAnnotation
+ * @link https://github.com/PUGX/aop the aop project homepage
+ */
 class MyClass
 {
     protected $a;
@@ -28,6 +34,7 @@ class MyClass
 
     /**
      * @Roulette(probability="1")
+     * @MyAnnotation
      * @param stdClass $o
      */
     public function randomError(stdClass $o)
