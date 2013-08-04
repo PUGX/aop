@@ -58,15 +58,17 @@ provided in the `examples` directory.
 namespace Example;
 
 // import the required namespaces
+use Doctrine\Common\Annotations\AnnotationReader;
+use PUGX\AOP\Aspect\LoggableGenerator;
+use PUGX\AOP\DependencyInjection\Compiler\Symfony2;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\Config\FileLocator;
 use PUGX\AOP\Aspect\Loggable;
-use PUGX\AOP\Manager;
 use Doctrine\Common\Annotations\AnnotationRegistry;
 
-// integrate autoloading (composer is recommended) and annotations mapping
-$loader = require '/path/to/my/autoload/script.php';
+// integrate autoloading with composer and annotations mapping
+$loader = require __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'autoload.php';
 AnnotationRegistry::registerLoader(array($loader, 'loadClass'));
 
 // instantiate the Symfony2 DIC
@@ -77,11 +79,11 @@ $loader->load(__DIR__ . DIRECTORY_SEPARATOR . 'container.yml');
 // define a directory where the proxy classes - containing the aspects - will be generated
 $proxyDir = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'test' . DIRECTORY_SEPARATOR . 'proxy/';
 
-// instantiate the AOP manager with an array of aspects
-$manager = new Manager(array(), $proxyDir);
+require 'MyClassExample.php';
 
-// tell the manager to inject AOP in the container
-$manager->enableAop($container);
+$symfony2Compiler = new Symfony2(new AnnotationReader(), $proxyDir, '\PUGX\AOP\Aspect\BaseAnnotation', array());
+$container->addCompilerPass($symfony2Compiler);
+$container->compile();
 ```
 
 That's it, now you have successfully compiled
@@ -99,19 +101,19 @@ Here is how you enable the `Loggable` aspect:
 ``` php
 <?php
 
-// import the Loggable aspect as Log
-use PUGX\AOP\Aspect\Loggable\Annotation as Log;
-
-// instantiate the AOP manager, adding the Loggable aspect
-$manager = new Manager(array(
-    new Loggable($proxyDir)
-), $proxyDir);
+// Enable the Loggable aspect for all classes in the container that has @Log annotation
+$symfony2Compiler = new Symfony2(new AnnotationReader(), $proxyDir, '\PUGX\AOP\Aspect\BaseAnnotation', array('loggable'));
+$container->addCompilerPass($symfony2Compiler);
+$container->compile();
 ```
 
 Now, let's see how the DIC is configured:
 
 ``` yaml
 services:
+  loggable:
+    class: "PUGX\\AOP\\Aspect\\Loggable\\Loggable"
+    arguments: ["@service_container"]
   monolog.logger_standard:
     class: "Monolog\\Logger"
     arguments:
@@ -129,11 +131,16 @@ to enable Loggable in the service `my_example_service`:
 ``` php
 <?php
 
+namespace Example;
+
+// import the Loggable aspect as Log
+use PUGX\AOP\Aspect\Loggable\Annotation as Log;
+
 class MyExampleClass
 {
     protected $a;
     protected $b;
-    
+
     /**
      * @Log(what="$a", when="start", with="monolog.logger_standard", as="Hey, Im getting %s as first argument")
      */
@@ -142,15 +149,16 @@ class MyExampleClass
         $this->a = $a;
         $this->b = $b;
     }
-    
+
     /**
+     * @Log(what="$c", when="start", with="monolog.logger_standard", as="argument $c is %s")
      * @Log(what="$this->b", when="start", with="monolog.logger_standard", as="Hey, value of MyExampleClass::b is %s")
-     * @Log(what="$this->b", with="monolog.logger_standard", as="Log with context!", context="$this->b")
      * @Log(what="$this->b", when="end", with="monolog.logger_standard", as="HOLY COW! Now MyExampleClass::b is %s")
+     * @\PUGX\AOP\Stub\MyAnnotation
      */
-    public function doSomething()
+    public function doSomething($c)
     {
-        $this ->b = $this->b * 10;
+        $this->b = $this->b * 10 + (int) $c;
     }
 }
 ```
@@ -163,6 +171,6 @@ thanks to the Loggable aspect:
 <?php
 
 $myExampleService = $container->get('my_example_service');
-$myExampleService->doSomething();
+$myExampleService->doSomething(5);
 ```
 
