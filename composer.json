@@ -17,9 +17,6 @@
     },
     "autoload": {
         "psr-0": {
-            "PUGX\\AOP\\Test":  "test/",
-            "PUGX\\AOP\\Stub":  "test/",
-            "PUGX\\AOP\\Proxy": "test/proxy/",
             "PUGX\\AOP\\": "src/"
         }
     },
